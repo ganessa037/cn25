@@ -47,11 +47,11 @@ wheels/
 .installed.cfg
 *.egg
 
-# Machine Learning Models
-*.pkl
-*.joblib
-*.h5
-*.model
+# Machine Learning Models (now handled by Git LFS)
+# *.pkl - tracked by Git LFS
+# *.joblib - tracked by Git LFS
+# *.h5 - tracked by Git LFS
+# *.model - tracked by Git LFS
 
 # Jupyter Notebook
 .ipynb_checkpoints
