@@ -5,9 +5,10 @@ including year suggestions and comprehensive vehicle data correction.
 """
 
 import pandas as pd
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any
 import difflib
 from collections import Counter
+from .year_validation_mechanism import apply_year_validation
 
 
 def suggest_year_correction(year_input: str, vehicle_master_df: pd.DataFrame, 
@@ -117,6 +118,20 @@ def comprehensive_vehicle_correction(user_df: pd.DataFrame,
                         'corrected': best_model['suggestion'],
                         'confidence': best_model['confidence']
                     })
+        
+        # Correct year if available
+        if year_column in row:
+            year_validation_result = apply_year_validation(
+                str(row[year_column]), confidence_threshold
+            )
+            if year_validation_result.correction_applied:
+                corrected_df.at[idx, year_column] = year_validation_result.corrected_year
+                row_corrections.append({
+                    'field': year_column,
+                    'original': year_validation_result.original_input,
+                    'corrected': year_validation_result.corrected_year,
+                    'confidence': year_validation_result.confidence_score
+                })
         
         if row_corrections:
             corrections_applied += 1
