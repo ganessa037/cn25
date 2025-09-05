@@ -1,0 +1,18 @@
+{
+  "model_info": {
+    "training_date": "2025-09-05T17:52:57.446907",
+    "synthetic_samples": 6000,
+    "vehicle_brands": 4,
+    "vehicle_models": 8
+  },
+  "performance": {
+    "hybrid_accuracy": 0.7973644415640527,
+    "hybrid_coverage": 0.7715,
+    "best_ml_model": "svm"
+  },
+  "model_weights": {
+    "rule": 0.3,
+    "ml": 0.5,
+    "transformer": 0.2
+  }
+}
