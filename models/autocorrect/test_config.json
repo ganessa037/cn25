@@ -1,0 +1,116 @@
+{
+  "test_modes": {
+    "framework": {
+      "enabled": true,
+      "description": "Test the testing framework itself with dummy corrector",
+      "timeout_seconds": 120
+    },
+    "models": {
+      "enabled": true,
+      "description": "Test trained autocorrect models if available",
+      "timeout_seconds": 300
+    },
+    "integration": {
+      "enabled": true,
+      "description": "Test integration between components",
+      "timeout_seconds": 180
+    }
+  },
+  "test_parameters": {
+    "confidence_threshold": 0.6,
+    "performance_threshold_ms": 10,
+    "batch_size": 100,
+    "timeout_seconds": 600,
+    "max_test_cases": 1000,
+    "enable_stress_testing": false
+  },
+  "test_data": {
+    "use_synthetic_data": true,
+    "synthetic_data_size": 500,
+    "include_edge_cases": true,
+    "custom_test_cases": [
+      {
+        "input": "toyot",
+        "expected": "toyota",
+        "category": "missing_char",
+        "priority": "high"
+      },
+      {
+        "input": "hond",
+        "expected": "honda",
+        "category": "missing_char",
+        "priority": "high"
+      },
+      {
+        "input": "camr",
+        "expected": "camry",
+        "category": "missing_char",
+        "priority": "high"
+      },
+      {
+        "input": "civicy",
+        "expected": "civic",
+        "category": "extra_char",
+        "priority": "high"
+      },
+      {
+        "input": "nisssan",
+        "expected": "nissan",
+        "category": "double_char",
+        "priority": "medium"
+      },
+      {
+        "input": "myvi",
+        "expected": "myvi",
+        "category": "exact_match",
+        "priority": "medium"
+      },
+      {
+        "input": "perodua",
+        "expected": "perodua",
+        "category": "exact_match",
+        "priority": "medium"
+      }
+    ]
+  },
+  "logging": {
+    "log_level": "INFO",
+    "save_detailed_logs": true,
+    "log_to_console": true,
+    "log_to_file": true,
+    "generate_html_report": false,
+    "include_debug_info": true,
+    "log_performance_metrics": true
+  },
+  "output": {
+    "results_dir": "test_results",
+    "save_plots": false,
+    "export_csv": true,
+    "export_json": true,
+    "generate_summary_report": true,
+    "include_error_details": true,
+    "compress_results": false
+  },
+  "performance": {
+    "enable_profiling": false,
+    "memory_monitoring": false,
+    "benchmark_iterations": 3,
+    "warmup_iterations": 1
+  },
+  "validation": {
+    "strict_mode": false,
+    "allow_partial_matches": true,
+    "case_sensitive": false,
+    "validate_confidence_scores": true,
+    "min_confidence_threshold": 0.1,
+    "max_confidence_threshold": 1.0
+  },
+  "reporting": {
+    "include_test_details": true,
+    "include_performance_metrics": true,
+    "include_error_analysis": true,
+    "include_recommendations": true,
+    "generate_charts": false,
+    "email_notifications": false
+  }
+}
