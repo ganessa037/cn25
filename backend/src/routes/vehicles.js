@@ -1,23 +1,41 @@
-const express = require('express');
-const vehicleController = require('../controllers/vehicleController');
-const authMiddleware = require('../middleware/auth');
-const validationMiddleware = require('../middleware/validation');
+import express from 'express';
+import { prisma } from '../db/prisma.js';
+import { requireUser } from '../middleware/requireUser.js';
 
-const router = express.Router();
+const r = express.Router();
+r.use(requireUser);
 
-// Apply authentication to all vehicle routes
-router.use(authMiddleware);
+// list
+r.get('/', async (req, res) => {
+  const rows = await prisma.vehicle.findMany({ where: { userId: req.user.id }, orderBy: { createdAt: 'desc' }});
+  res.json(rows);
+});
 
-// Vehicle CRUD routes
-router.get('/', vehicleController.getAllVehicles);
-router.get('/:id', vehicleController.getVehicleById);
-router.post('/', validationMiddleware.validateVehicleData, vehicleController.createVehicle);
-router.put('/:id', validationMiddleware.validateVehicleData, vehicleController.updateVehicle);
-router.delete('/:id', vehicleController.deleteVehicle);
+// create
+r.post('/', async (req, res) => {
+  const data = req.body;
+  const v = await prisma.vehicle.create({
+    data: { ...data, userId: req.user.id }
+  });
+  res.status(201).json(v);
+});
 
-// Vehicle validation routes
-router.post('/validate', validationMiddleware.validateVehicleInput, vehicleController.validateVehicle);
-router.post('/batch-validate', vehicleController.batchValidateVehicles);
-router.get('/suggestions/:field', vehicleController.getFieldSuggestions);
+// update
+r.put('/:id', async (req, res) => {
+  const { id } = req.params;
+  const data = req.body;
+  const v = await prisma.vehicle.update({
+    where: { id },
+    data
+  });
+  res.json(v);
+});
 
-module.exports = router;
+// delete
+r.delete('/:id', async (req, res) => {
+  const { id } = req.params;
+  await prisma.vehicle.delete({ where: { id }});
+  res.json({ success: true });
+});
+
+export default r;

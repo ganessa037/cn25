@@ -1,0 +1,11 @@
+# ---- backend secrets & build ----
+backend/.env
+backend/node_modules/
+backend/.env.local
+backend/.DS_Store
+# ---- frontend build ----
+project/node_modules/
+project/.env.local
+project/.DS_Store
+# ---- prisma artifacts (keep migrations) ----
+backend/node_modules/.prisma/
