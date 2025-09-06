@@ -1,19 +1,19 @@
-const express = require('express');
-const authRoutes = require('./auth');
-const vehicleRoutes = require('./vehicles');
-const documentRoutes = require('./documents');
-const insuranceRoutes = require('./insurance');
+import { Router } from 'express';
+import authRoutes from './auth.js';
+import vehicleRoutes from './vehicles.js';
+import documentRoutes from './documents.js';
+import insuranceRoutes from './insurance.js';
 
-const router = express.Router();
+const router = Router();
 
-// Mount routes
+// Mount routes under /api (app.js already does app.use('/api', routes))
 router.use('/auth', authRoutes);
 router.use('/vehicles', vehicleRoutes);
 router.use('/documents', documentRoutes);
 router.use('/insurance', insuranceRoutes);
 
-// API info endpoint
-router.get('/', (req, res) => {
+// API info
+router.get('/', (_req, res) => {
   res.json({
     message: 'Vehicle Validation API v1.0',
     version: '1.0.0',
@@ -21,9 +21,9 @@ router.get('/', (req, res) => {
       auth: '/api/auth',
       vehicles: '/api/vehicles',
       documents: '/api/documents',
-      insurance: '/api/insurance'
-    }
+      insurance: '/api/insurance',
+    },
   });
 });
 
-module.exports = router;
+export default router;

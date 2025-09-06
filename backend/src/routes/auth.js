@@ -1,19 +1,12 @@
-const express = require('express');
-const authController = require('../controllers/authController');
-const { authMiddleware } = require('../middleware/auth');
-const validationMiddleware = require('../middleware/validation');
+import express from "express";
+import passport from "passport";
+import { initGooglePassport, startGoogle, googleCallback } from "../controllers/authController.js";
 
 const router = express.Router();
+initGooglePassport();
+router.use(passport.initialize());
 
-// Public routes
-router.post('/register', validationMiddleware.validateRegistration, authController.register);
-router.post('/login', validationMiddleware.validateLogin, authController.login);
-router.post('/refresh', authController.refresh);
+router.get("/google/start", startGoogle);
+router.get("/google/callback", ...googleCallback);
 
-// Protected routes
-router.get('/profile', authMiddleware, authController.profile);
-router.put('/profile', authMiddleware, validationMiddleware.validateProfileUpdate, authController.updateProfile);
-router.post('/change-password', authMiddleware, validationMiddleware.validatePasswordChange, authController.changePassword);
-router.post('/logout', authMiddleware, authController.logout);
-
-module.exports = router;
+export default router;

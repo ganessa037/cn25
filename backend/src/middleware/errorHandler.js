@@ -1,42 +1,47 @@
-const logger = require('../utils/logger');
+import logger from '../utils/logger.js';
 
-const errorHandler = (error, req, res, next) => {
-  logger.error('Error occurred:', {
-    error: error.message,
-    stack: error.stack,
-    url: req.url,
-    method: req.method,
-    ip: req.ip
-  });
-
-  // Default error response
-  let statusCode = error.statusCode || 500;
+function normalize(error) {
+  let status = error.statusCode || 500;
   let message = error.message || 'Internal Server Error';
+  let code = error.code || 'INTERNAL_ERROR';
 
-  // Handle specific error types
-  if (error.name === 'ValidationError') {
-    statusCode = 400;
-    message = 'Validation failed';
-  } else if (error.name === 'UnauthorizedError') {
-    statusCode = 401;
-    message = 'Unauthorized access';
-  } else if (error.code === 'ECONNREFUSED') {
-    statusCode = 503;
-    message = 'External service unavailable';
+  // Common cases (extend as you need)
+  switch (error.name) {
+    case 'ValidationError':
+    case 'SequelizeValidationError':
+      status = 400; message = 'Validation failed'; code = 'VALIDATION_ERROR'; break;
+    case 'SequelizeUniqueConstraintError':
+      status = 409; message = 'Duplicate resource'; code = 'DUPLICATE'; break;
+    case 'UnauthorizedError':
+    case 'JsonWebTokenError':
+      status = 401; message = 'Unauthorized access'; code = 'UNAUTHORIZED'; break;
+    case 'TokenExpiredError':
+      status = 401; message = 'Token expired'; code = 'TOKEN_EXPIRED'; break;
   }
+  if (error.code === 'ECONNREFUSED') {
+    status = 503; message = 'External service unavailable'; code = 'UPSTREAM_UNAVAILABLE';
+  }
+  return { status, message, code };
+}
 
-  // Don't expose internal error details in production
-  const isDevelopment = process.env.NODE_ENV === 'development';
-  
-  res.status(statusCode).json({
+export default function errorHandler(err, req, res, _next) {
+  logger.error('Error occurred', { message: err.message, stack: err.stack });
+  const status = err.statusCode || 500;
+  res.status(status).json({
+    success: false,
+    error: { message: err.message || 'Internal Server Error' }
+  });
+}
+
+  const { status, message, code } = normalize(error);
+  const isDevelopment = process.env.NODE_ENV !== 'production';
+
+  res.status(status).json({
     success: false,
     error: {
-      code: error.code || 'INTERNAL_ERROR',
-      message: message,
+      code,
+      message,
       ...(isDevelopment && { stack: error.stack }),
-      timestamp: new Date().toISOString()
-    }
+      timestamp: new Date().toISOString(),
+    },
   });
-};
-
-module.exports = errorHandler;

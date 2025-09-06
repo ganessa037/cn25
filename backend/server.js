@@ -1,11 +1,7 @@
-// backend/server.js
-const app = require('./src/app');
-const config = require('./src/config/config');
-const logger = require('./src/utils/logger');
+import app from './app.js';
+import 'dotenv/config';
 
-const PORT = config.port || 3001;
-
-app.listen(PORT, () => {
-  logger.info(`Backend server running on port ${PORT}`);
-  logger.info(`API Documentation: http://localhost:${PORT}/api-docs`);
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, '127.0.0.1', () => {
+  console.log(`API listening on http://127.0.0.1:${PORT}`);
 });
