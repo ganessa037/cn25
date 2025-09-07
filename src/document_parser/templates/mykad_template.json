@@ -1,0 +1,430 @@
+{
+  "document_type": "mykad",
+  "version": "1.0",
+  "description": "Malaysian Identity Card (MyKad) Template",
+  "created_date": "2024-01-15",
+  "last_updated": "2024-01-15",
+  "fields": {
+    "ic_number": {
+      "field_type": "text",
+      "required": true,
+      "validation_rules": {
+        "pattern": "^\\d{6}-\\d{2}-\\d{4}$",
+        "length": 14,
+        "description": "Malaysian IC number format: YYMMDD-PB-XXXX"
+      },
+      "extraction_rules": {
+        "keywords": ["NO. KAD PENGENALAN", "IC NO", "NRIC"],
+        "position": "prominent_number",
+        "region": {
+          "x": 0.3,
+          "y": 0.35,
+          "width": 0.4,
+          "height": 0.1
+        }
+      },
+      "confidence_threshold": 0.95
+    },
+    "full_name": {
+      "field_type": "text",
+      "required": true,
+      "validation_rules": {
+        "min_length": 2,
+        "max_length": 100,
+        "pattern": "^[A-Z\\s@/.-]+$",
+        "description": "Full name in uppercase"
+      },
+      "extraction_rules": {
+        "keywords": ["NAMA", "NAME"],
+        "position": "after_keyword",
+        "region": {
+          "x": 0.3,
+          "y": 0.45,
+          "width": 0.6,
+          "height": 0.1
+        }
+      },
+      "confidence_threshold": 0.9
+    },
+    "address": {
+      "field_type": "text",
+      "required": true,
+      "validation_rules": {
+        "min_length": 10,
+        "max_length": 300,
+        "pattern": "^[A-Z0-9\\s,./()-]+$",
+        "description": "Full address in uppercase"
+      },
+      "extraction_rules": {
+        "keywords": ["ALAMAT", "ADDRESS"],
+        "position": "multiline_after_keyword",
+        "region": {
+          "x": 0.3,
+          "y": 0.55,
+          "width": 0.6,
+          "height": 0.2
+        }
+      },
+      "confidence_threshold": 0.8
+    },
+    "postcode": {
+      "field_type": "text",
+      "required": true,
+      "validation_rules": {
+        "pattern": "^\\d{5}$",
+        "length": 5,
+        "description": "5-digit Malaysian postcode"
+      },
+      "extraction_rules": {
+        "keywords": ["POSKOD", "POSTCODE"],
+        "position": "after_keyword",
+        "region": {
+          "x": 0.3,
+          "y": 0.7,
+          "width": 0.2,
+          "height": 0.08
+        }
+      },
+      "confidence_threshold": 0.9
+    },
+    "state": {
+      "field_type": "text",
+      "required": true,
+      "validation_rules": {
+        "min_length": 3,
+        "max_length": 50,
+        "pattern": "^[A-Z\\s]+$",
+        "allowed_values": [
+          "JOHOR", "KEDAH", "KELANTAN", "MELAKA", "NEGERI SEMBILAN",
+          "PAHANG", "PERAK", "PERLIS", "PULAU PINANG", "SABAH",
+          "SARAWAK", "SELANGOR", "TERENGGANU", "WILAYAH PERSEKUTUAN",
+          "KUALA LUMPUR", "LABUAN", "PUTRAJAYA"
+        ],
+        "description": "Malaysian state name"
+      },
+      "extraction_rules": {
+        "keywords": ["NEGERI", "STATE"],
+        "position": "after_keyword",
+        "region": {
+          "x": 0.3,
+          "y": 0.75,
+          "width": 0.4,
+          "height": 0.08
+        }
+      },
+      "confidence_threshold": 0.8
+    },
+    "gender": {
+      "field_type": "text",
+      "required": true,
+      "validation_rules": {
+        "allowed_values": ["LELAKI", "PEREMPUAN", "MALE", "FEMALE", "L", "P"],
+        "description": "Gender (derived from IC number or explicit field)"
+      },
+      "extraction_rules": {
+        "keywords": ["JANTINA", "GENDER", "SEX"],
+        "position": "after_keyword",
+        "region": {
+          "x": 0.6,
+          "y": 0.35,
+          "width": 0.2,
+          "height": 0.08
+        },
+        "derive_from_ic": true
+      },
+      "confidence_threshold": 0.9
+    },
+    "religion": {
+      "field_type": "text",
+      "required": false,
+      "validation_rules": {
+        "min_length": 3,
+        "max_length": 20,
+        "pattern": "^[A-Z\\s]+$",
+        "allowed_values": [
+          "ISLAM", "KRISTIAN", "BUDDHA", "HINDU", "SIKH", "TAOISME",
+          "CONFUCIANISM", "TRIBAL", "OTHERS", "LAIN-LAIN"
+        ],
+        "description": "Religion"
+      },
+      "extraction_rules": {
+        "keywords": ["AGAMA", "RELIGION"],
+        "position": "after_keyword",
+        "region": {
+          "x": 0.3,
+          "y": 0.8,
+          "width": 0.3,
+          "height": 0.08
+        }
+      },
+      "confidence_threshold": 0.7
+    },
+    "birth_date": {
+      "field_type": "date",
+      "required": true,
+      "validation_rules": {
+        "format": "DD/MM/YYYY",
+        "min_date": "01/01/1900",
+        "max_date": "31/12/2010",
+        "derive_from_ic": true,
+        "description": "Birth date (derived from IC number)"
+      },
+      "extraction_rules": {
+        "keywords": ["TARIKH LAHIR", "DATE OF BIRTH", "DOB"],
+        "position": "derived_from_ic",
+        "region": {
+          "x": 0.3,
+          "y": 0.35,
+          "width": 0.4,
+          "height": 0.1
+        }
+      },
+      "confidence_threshold": 0.95
+    },
+    "birth_place": {
+      "field_type": "text",
+      "required": true,
+      "validation_rules": {
+        "min_length": 2,
+        "max_length": 50,
+        "pattern": "^[A-Z\\s]+$",
+        "derive_from_ic": true,
+        "description": "Birth place (derived from IC number)"
+      },
+      "extraction_rules": {
+        "keywords": ["TEMPAT LAHIR", "PLACE OF BIRTH", "POB"],
+        "position": "derived_from_ic",
+        "region": {
+          "x": 0.3,
+          "y": 0.35,
+          "width": 0.4,
+          "height": 0.1
+        }
+      },
+      "confidence_threshold": 0.9
+    },
+    "citizenship": {
+      "field_type": "text",
+      "required": false,
+      "validation_rules": {
+        "allowed_values": ["WARGANEGARA", "CITIZEN", "BUKAN WARGANEGARA", "NON-CITIZEN"],
+        "description": "Citizenship status"
+      },
+      "extraction_rules": {
+        "keywords": ["KEWARGANEGARAAN", "CITIZENSHIP"],
+        "position": "after_keyword",
+        "region": {
+          "x": 0.6,
+          "y": 0.8,
+          "width": 0.3,
+          "height": 0.08
+        }
+      },
+      "confidence_threshold": 0.7
+    }
+  },
+  "document_structure": {
+    "header": {
+      "region": {
+        "x": 0.0,
+        "y": 0.0,
+        "width": 1.0,
+        "height": 0.15
+      },
+      "expected_text": ["MALAYSIA", "MYKAD", "GOVERNMENT OF MALAYSIA"]
+    },
+    "photo_area": {
+      "region": {
+        "x": 0.05,
+        "y": 0.2,
+        "width": 0.2,
+        "height": 0.4
+      },
+      "description": "Photo and chip area"
+    },
+    "personal_info": {
+      "region": {
+        "x": 0.3,
+        "y": 0.2,
+        "width": 0.65,
+        "height": 0.7
+      },
+      "fields": ["ic_number", "full_name", "address", "postcode", "state", "gender", "religion"]
+    },
+    "footer": {
+      "region": {
+        "x": 0.0,
+        "y": 0.9,
+        "width": 1.0,
+        "height": 0.1
+      },
+      "fields": ["citizenship"]
+    }
+  },
+  "ic_number_mapping": {
+    "birth_place_codes": {
+      "01": "JOHOR",
+      "02": "KEDAH",
+      "03": "KELANTAN",
+      "04": "MELAKA",
+      "05": "NEGERI SEMBILAN",
+      "06": "PAHANG",
+      "07": "PULAU PINANG",
+      "08": "PERAK",
+      "09": "PERLIS",
+      "10": "SELANGOR",
+      "11": "TERENGGANU",
+      "12": "SABAH",
+      "13": "SARAWAK",
+      "14": "WILAYAH PERSEKUTUAN KUALA LUMPUR",
+      "15": "WILAYAH PERSEKUTUAN LABUAN",
+      "16": "WILAYAH PERSEKUTUAN PUTRAJAYA",
+      "21": "JOHOR",
+      "22": "JOHOR",
+      "23": "JOHOR",
+      "24": "JOHOR",
+      "25": "KEDAH",
+      "26": "KEDAH",
+      "27": "KEDAH",
+      "28": "KELANTAN",
+      "29": "KELANTAN",
+      "30": "MELAKA",
+      "31": "NEGERI SEMBILAN",
+      "32": "PAHANG",
+      "33": "PAHANG",
+      "34": "PULAU PINANG",
+      "35": "PULAU PINANG",
+      "36": "PERAK",
+      "37": "PERAK",
+      "38": "PERAK",
+      "39": "PERAK",
+      "40": "PERLIS",
+      "41": "SELANGOR",
+      "42": "SELANGOR",
+      "43": "SELANGOR",
+      "44": "SELANGOR",
+      "45": "TERENGGANU",
+      "46": "TERENGGANU",
+      "47": "SABAH",
+      "48": "SABAH",
+      "49": "SABAH",
+      "50": "SARAWAK",
+      "51": "SARAWAK",
+      "52": "SARAWAK",
+      "53": "SARAWAK",
+      "54": "WILAYAH PERSEKUTUAN KUALA LUMPUR",
+      "55": "WILAYAH PERSEKUTUAN KUALA LUMPUR",
+      "56": "WILAYAH PERSEKUTUAN KUALA LUMPUR",
+      "57": "WILAYAH PERSEKUTUAN KUALA LUMPUR",
+      "58": "WILAYAH PERSEKUTUAN LABUAN",
+      "59": "NEGERI SEMBILAN"
+    },
+    "gender_determination": {
+      "odd_last_digit": "LELAKI",
+      "even_last_digit": "PEREMPUAN"
+    }
+  },
+  "ocr_settings": {
+    "language": ["eng", "msa"],
+    "preprocessing": {
+      "deskew": true,
+      "denoise": true,
+      "enhance_contrast": true,
+      "binarize": false,
+      "remove_shadows": true
+    },
+    "confidence_threshold": 0.7,
+    "psm_mode": 6
+  },
+  "validation_rules": {
+    "cross_field_validation": [
+      {
+        "rule": "ic_consistency",
+        "description": "IC number should be consistent with derived birth date, place, and gender",
+        "fields": ["ic_number", "birth_date", "birth_place", "gender"],
+        "validation_function": "validate_ic_consistency"
+      },
+      {
+        "rule": "address_postcode_match",
+        "description": "Postcode should match the state",
+        "fields": ["postcode", "state"],
+        "validation_function": "validate_postcode_state_match"
+      },
+      {
+        "rule": "name_format",
+        "description": "Name should follow Malaysian naming conventions",
+        "fields": ["full_name"],
+        "validation_function": "validate_malaysian_name_format"
+      }
+    ],
+    "document_integrity": {
+      "required_keywords": ["MALAYSIA", "KAD PENGENALAN"],
+      "forbidden_keywords": ["COPY", "DUPLICATE", "PHOTOCOPY", "SPECIMEN"],
+      "min_confidence_score": 0.8
+    }
+  },
+  "error_handling": {
+    "fallback_extraction": {
+      "enable_fuzzy_matching": true,
+      "fuzzy_threshold": 0.85,
+      "enable_manual_review": true
+    },
+    "common_ocr_errors": {
+      "character_substitutions": {
+        "0": "O",
+        "1": "I",
+        "5": "S",
+        "8": "B",
+        "6": "G",
+        "2": "Z"
+      },
+      "word_corrections": {
+        "MALAYSIA": ["MALAYS1A", "MAL4YSIA", "MALAYSI4"],
+        "PENGENALAN": ["PENGENAL4N", "PENGEN4LAN", "PENGENAL4N"],
+        "ALAMAT": ["AL4MAT", "ALAMAT", "4LAMAT"]
+      }
+    }
+  },
+  "quality_checks": {
+    "image_quality": {
+      "min_resolution": [600, 400],
+      "max_file_size_mb": 10,
+      "supported_formats": ["jpg", "jpeg", "png", "tiff", "pdf"]
+    },
+    "text_quality": {
+      "min_text_length": 30,
+      "max_noise_ratio": 0.2,
+      "required_text_regions": 2
+    },
+    "security_features": {
+      "check_for_tampering": true,
+      "verify_document_authenticity": true,
+      "detect_photocopies": true
+    }
+  },
+  "output_format": {
+    "include_confidence_scores": true,
+    "include_bounding_boxes": true,
+    "include_raw_text": false,
+    "normalize_output": true,
+    "include_derived_fields": true
+  },
+  "postcode_state_mapping": {
+    "01000-09999": "PERLIS",
+    "05000-09999": "KEDAH",
+    "10000-14999": "PULAU PINANG",
+    "15000-18999": "KELANTAN",
+    "20000-24999": "TERENGGANU",
+    "25000-28999": "PAHANG",
+    "30000-36999": "PERAK",
+    "40000-48999": "SELANGOR",
+    "50000-60999": "KUALA LUMPUR",
+    "62000-62999": "PUTRAJAYA",
+    "63000-73999": "NEGERI SEMBILAN",
+    "75000-78999": "MELAKA",
+    "79000-86999": "JOHOR",
+    "87000-91999": "LABUAN",
+    "88000-91999": "SABAH",
+    "93000-98999": "SARAWAK"
+  }
+}

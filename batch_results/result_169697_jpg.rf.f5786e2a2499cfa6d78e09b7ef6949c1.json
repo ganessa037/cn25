@@ -1,0 +1,23 @@
+{
+  "image_name": "169697_jpg.rf.f5786e2a2499cfa6d78e09b7ef6949c1.jpg",
+  "image_path": "../IC_photos/169697_jpg.rf.f5786e2a2499cfa6d78e09b7ef6949c1.jpg",
+  "processing_time": 5.649250745773315,
+  "document_type": "Unknown",
+  "classification_confidence": 0.0,
+  "image_dimensions": {
+    "width": 3302,
+    "height": 2138
+  },
+  "extracted_fields": {
+    "name": {
+      "value": "Jaar",
+      "confidence": 0.7,
+      "method": "pattern",
+      "required": false,
+      "valid": true
+    }
+  },
+  "validation_passed": true,
+  "ocr_text": "a =\n\ni JAAR tia SUE US Uae UT PTE ‘3\nFr re eG\nSA at any AYRES sabes jal\n\nes x\n\nbd\n4\n‘\n\n*)\n\nevatkG\n\n'\nr\n\nTNARNY, EEL Na OA ’ G phe\nWEEE: IGE TAS TER OS\nees\n\nAKLAY ERAICER eos\nwe aE RA TAREE\n\nFAA eKHERNIBAN KIA oe AY,\nRIN SIREEE A AMMALA Vie\nNET SIRKE RAJ\n\nyh etely\n\nDY SIA De SAAN MACK pee\nLE ARERAIAANKIALAV Sq eee SIAR ER AIS\n\nA ae eee SAK\nEE RAJAANMALaCs\n\nrs ia i\nze oa UIAK\n\n: STARE eae KE :\nSIAR Ea taanssiiarero URL Bs",
+  "ocr_confidence": 28.378048780487806
+}

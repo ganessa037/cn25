@@ -1,0 +1,15 @@
+{
+  "image_name": "236430_jpg.rf.89d4896850b84b64159fa533573ec5fd.jpg",
+  "image_path": "../IC_photos/236430_jpg.rf.89d4896850b84b64159fa533573ec5fd.jpg",
+  "processing_time": 0.16933798789978027,
+  "document_type": "Unknown",
+  "classification_confidence": 0.0,
+  "image_dimensions": {
+    "width": 480,
+    "height": 360
+  },
+  "extracted_fields": {},
+  "validation_passed": true,
+  "ocr_text": "",
+  "ocr_confidence": 95.0
+}

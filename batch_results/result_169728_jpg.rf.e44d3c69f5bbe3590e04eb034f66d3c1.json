@@ -1,0 +1,15 @@
+{
+  "image_name": "169728_jpg.rf.e44d3c69f5bbe3590e04eb034f66d3c1.jpg",
+  "image_path": "../IC_photos/169728_jpg.rf.e44d3c69f5bbe3590e04eb034f66d3c1.jpg",
+  "processing_time": 0.1766190528869629,
+  "document_type": "Unknown",
+  "classification_confidence": 0.0,
+  "image_dimensions": {
+    "width": 480,
+    "height": 306
+  },
+  "extracted_fields": {},
+  "validation_passed": true,
+  "ocr_text": "",
+  "ocr_confidence": 95.0
+}

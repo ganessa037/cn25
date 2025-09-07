@@ -1,0 +1,23 @@
+{
+  "image_name": "242858_jpg.rf.0351eddfd573fde8afa4af02129f4380.jpg",
+  "image_path": "../IC_photos/242858_jpg.rf.0351eddfd573fde8afa4af02129f4380.jpg",
+  "processing_time": 18.699836015701294,
+  "document_type": "Unknown",
+  "classification_confidence": 0.0,
+  "image_dimensions": {
+    "width": 4608,
+    "height": 3456
+  },
+  "extracted_fields": {
+    "name": {
+      "value": "Rcc",
+      "confidence": 0.7,
+      "method": "pattern",
+      "required": false,
+      "valid": true
+    }
+  },
+  "validation_passed": true,
+  "ocr_text": "RCC\n\n¥ aN WY\naN\n\noAY\nWS\n\nYQ",
+  "ocr_confidence": 40.285714285714285
+}

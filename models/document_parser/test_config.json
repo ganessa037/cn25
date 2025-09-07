@@ -1,0 +1,296 @@
+{
+  "test_configuration": {
+    "version": "1.0.0",
+    "created_date": "2024-01-01",
+    "description": "Test configuration for document parser models"
+  },
+  "test_data": {
+    "classification": {
+      "test_documents": [
+        {
+          "id": "test_mykad_001",
+          "text": "MyKad Identity Card Number 123456-12-1234 Name AHMAD BIN ALI Address Jalan Bukit Bintang Kuala Lumpur",
+          "expected_label": "mykad",
+          "confidence_threshold": 0.8
+        },
+        {
+          "id": "test_spk_001",
+          "text": "Sijil Pelajaran Malaysia SPM Certificate Student Name SITI AMINAH BINTI HASSAN School SMK Taman Desa",
+          "expected_label": "spk",
+          "confidence_threshold": 0.8
+        },
+        {
+          "id": "test_passport_001",
+          "text": "Passport Republic of Malaysia Passport No A12345678 Name MUHAMMAD HASSAN BIN AHMAD",
+          "expected_label": "passport",
+          "confidence_threshold": 0.8
+        },
+        {
+          "id": "test_license_001",
+          "text": "Driver License Lesen Memandu Class D License No D1234567 Name TAN WEI MING",
+          "expected_label": "license",
+          "confidence_threshold": 0.7
+        },
+        {
+          "id": "test_birth_cert_001",
+          "text": "Birth Certificate Sijil Kelahiran Child Name NURUL AINA BINTI IBRAHIM Date of Birth 15/08/2010",
+          "expected_label": "birth_cert",
+          "confidence_threshold": 0.7
+        },
+        {
+          "id": "test_unknown_001",
+          "text": "Random document with no specific format or identifiable features",
+          "expected_label": "unknown",
+          "confidence_threshold": 0.5
+        }
+      ],
+      "performance_thresholds": {
+        "minimum_accuracy": 0.85,
+        "minimum_precision": 0.80,
+        "minimum_recall": 0.80,
+        "minimum_f1_score": 0.80
+      }
+    },
+    "field_extraction": {
+      "test_documents": [
+        {
+          "id": "field_test_001",
+          "text": "MyKad 123456-12-1234 AHMAD BIN ALI Jalan Bukit Bintang, 50200 Kuala Lumpur Phone: 012-3456789",
+          "expected_fields": {
+            "ic_number": "123456-12-1234",
+            "name": "AHMAD BIN ALI",
+            "address": "Jalan Bukit Bintang, 50200 Kuala Lumpur",
+            "phone": "012-3456789"
+          },
+          "field_confidence_thresholds": {
+            "ic_number": 0.9,
+            "name": 0.8,
+            "address": 0.7,
+            "phone": 0.8
+          }
+        },
+        {
+          "id": "field_test_002",
+          "text": "Name: SITI AMINAH BINTI HASSAN IC: 987654-32-9876 Email: siti.aminah@email.com DOB: 15/03/1990",
+          "expected_fields": {
+            "ic_number": "987654-32-9876",
+            "name": "SITI AMINAH BINTI HASSAN",
+            "email": "siti.aminah@email.com",
+            "date_of_birth": "15/03/1990"
+          },
+          "field_confidence_thresholds": {
+            "ic_number": 0.9,
+            "name": 0.8,
+            "email": 0.9,
+            "date_of_birth": 0.7
+          }
+        },
+        {
+          "id": "field_test_003",
+          "text": "Passport A12345678 MUHAMMAD HASSAN BIN AHMAD Malaysian Citizen Born 20/12/1985 Kuala Lumpur",
+          "expected_fields": {
+            "passport_number": "A12345678",
+            "name": "MUHAMMAD HASSAN BIN AHMAD",
+            "nationality": "Malaysian",
+            "date_of_birth": "20/12/1985",
+            "place_of_birth": "Kuala Lumpur"
+          },
+          "field_confidence_thresholds": {
+            "passport_number": 0.9,
+            "name": 0.8,
+            "nationality": 0.7,
+            "date_of_birth": 0.7,
+            "place_of_birth": 0.6
+          }
+        }
+      ],
+      "performance_thresholds": {
+        "minimum_field_extraction_rate": 0.75,
+        "minimum_average_confidence": 0.70,
+        "maximum_false_positive_rate": 0.10
+      }
+    },
+    "ocr": {
+      "test_images": [
+        {
+          "id": "ocr_test_001",
+          "image_path": "test_images/mykad_sample.jpg",
+          "expected_text": "MyKad 123456-12-1234 AHMAD BIN ALI",
+          "ocr_engines": ["tesseract", "easyocr"],
+          "confidence_threshold": 0.8
+        },
+        {
+          "id": "ocr_test_002",
+          "image_path": "test_images/spk_sample.jpg",
+          "expected_text": "Sijil Pelajaran Malaysia SITI AMINAH",
+          "ocr_engines": ["tesseract", "easyocr"],
+          "confidence_threshold": 0.7
+        },
+        {
+          "id": "ocr_test_003",
+          "image_path": "test_images/passport_sample.jpg",
+          "expected_text": "Passport Malaysia A12345678",
+          "ocr_engines": ["tesseract", "easyocr"],
+          "confidence_threshold": 0.7
+        }
+      ],
+      "performance_thresholds": {
+        "minimum_text_similarity": 0.80,
+        "minimum_confidence": 0.70,
+        "maximum_processing_time_seconds": 5.0
+      }
+    }
+  },
+  "validation": {
+    "ic_number_validation": {
+      "valid_formats": [
+        "123456-12-1234",
+        "123456 12 1234",
+        "123456121234"
+      ],
+      "invalid_formats": [
+        "12345-12-1234",
+        "123456-1-1234",
+        "123456-12-123",
+        "abcdef-12-1234"
+      ]
+    },
+    "name_validation": {
+      "valid_names": [
+        "AHMAD BIN ALI",
+        "SITI AMINAH BINTI HASSAN",
+        "TAN WEI MING",
+        "NURUL AINA BINTI IBRAHIM"
+      ],
+      "invalid_names": [
+        "ahmad bin ali",
+        "123 INVALID NAME",
+        "NAME@INVALID",
+        ""
+      ]
+    },
+    "phone_validation": {
+      "valid_phones": [
+        "012-3456789",
+        "013-9876543",
+        "+60123456789",
+        "03-12345678"
+      ],
+      "invalid_phones": [
+        "012-345",
+        "abc-defghij",
+        "012345678901234",
+        ""
+      ]
+    },
+    "email_validation": {
+      "valid_emails": [
+        "user@example.com",
+        "test.email@domain.co.uk",
+        "user123@test-domain.org"
+      ],
+      "invalid_emails": [
+        "invalid-email",
+        "@domain.com",
+        "user@",
+        "user space@domain.com"
+      ]
+    }
+  },
+  "performance_benchmarks": {
+    "classification_model": {
+      "target_accuracy": 0.90,
+      "target_precision": 0.85,
+      "target_recall": 0.85,
+      "target_f1_score": 0.85,
+      "max_inference_time_ms": 100,
+      "max_model_size_mb": 50
+    },
+    "field_extraction_model": {
+      "target_extraction_rate": 0.80,
+      "target_confidence": 0.75,
+      "max_false_positive_rate": 0.05,
+      "max_processing_time_ms": 200
+    },
+    "ocr_model": {
+      "target_text_similarity": 0.85,
+      "target_confidence": 0.75,
+      "max_processing_time_ms": 3000,
+      "supported_languages": ["en", "ms"]
+    },
+    "end_to_end_pipeline": {
+      "target_overall_accuracy": 0.80,
+      "max_total_processing_time_ms": 5000,
+      "target_throughput_docs_per_minute": 60
+    }
+  },
+  "test_environments": {
+    "unit_tests": {
+      "framework": "pytest",
+      "coverage_threshold": 0.80,
+      "test_data_size": "small"
+    },
+    "integration_tests": {
+      "framework": "pytest",
+      "test_data_size": "medium",
+      "include_external_services": false
+    },
+    "performance_tests": {
+      "framework": "pytest-benchmark",
+      "test_data_size": "large",
+      "load_testing": true,
+      "stress_testing": true
+    },
+    "user_acceptance_tests": {
+      "framework": "manual",
+      "test_data_size": "real_world",
+      "user_scenarios": [
+        "upload_mykad_image",
+        "extract_fields_from_spk",
+        "validate_passport_data",
+        "batch_process_documents"
+      ]
+    }
+  },
+  "test_data_sources": {
+    "synthetic_data": {
+      "enabled": true,
+      "generation_rules": {
+        "ic_numbers": "random_valid_format",
+        "names": "malaysian_name_patterns",
+        "addresses": "malaysian_address_patterns",
+        "phones": "malaysian_phone_patterns"
+      }
+    },
+    "anonymized_real_data": {
+      "enabled": false,
+      "privacy_compliance": "PDPA_compliant",
+      "data_masking": true
+    },
+    "public_datasets": {
+      "enabled": true,
+      "sources": [
+        "government_sample_documents",
+        "academic_research_datasets"
+      ]
+    }
+  },
+  "reporting": {
+    "test_report_format": "json",
+    "include_detailed_metrics": true,
+    "include_confusion_matrices": true,
+    "include_error_analysis": true,
+    "generate_visualizations": true,
+    "save_failed_test_cases": true
+  },
+  "continuous_integration": {
+    "automated_testing": true,
+    "test_on_model_changes": true,
+    "test_on_data_changes": true,
+    "performance_regression_detection": true,
+    "notification_settings": {
+      "email_on_failure": true,
+      "slack_integration": false
+    }
+  }
+}

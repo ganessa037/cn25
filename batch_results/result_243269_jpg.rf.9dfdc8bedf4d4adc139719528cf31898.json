@@ -1,0 +1,23 @@
+{
+  "image_name": "243269_jpg.rf.9dfdc8bedf4d4adc139719528cf31898.jpg",
+  "image_path": "../IC_photos/243269_jpg.rf.9dfdc8bedf4d4adc139719528cf31898.jpg",
+  "processing_time": 5.9836578369140625,
+  "document_type": "Unknown",
+  "classification_confidence": 0.0,
+  "image_dimensions": {
+    "width": 4032,
+    "height": 3024
+  },
+  "extracted_fields": {
+    "name": {
+      "value": "Waver A",
+      "confidence": 0.7,
+      "method": "pattern",
+      "required": false,
+      "valid": true
+    }
+  },
+  "validation_passed": true,
+  "ocr_text": "Ly\n\nUy q See\n\nWAVER A Dyan ptt.\n\n——t—\n\nnr mr",
+  "ocr_confidence": 47.4
+}

@@ -1,0 +1,23 @@
+{
+  "image_name": "243316_jpg.rf.6d9cfe9febce9fa9cb5367cd8b7bc206.jpg",
+  "image_path": "../IC_photos/243316_jpg.rf.6d9cfe9febce9fa9cb5367cd8b7bc206.jpg",
+  "processing_time": 9.626830101013184,
+  "document_type": "Unknown",
+  "classification_confidence": 0.0,
+  "image_dimensions": {
+    "width": 4032,
+    "height": 3024
+  },
+  "extracted_fields": {
+    "name": {
+      "value": "Thpesgell Tute",
+      "confidence": 0.7,
+      "method": "pattern",
+      "required": false,
+      "valid": true
+    }
+  },
+  "validation_passed": true,
+  "ocr_text": "Lek\n\nfOIT\n\nTHPESGELL TUTE\n\n$A OSE\n\nede RO BAT AN OD\n\niS\n«|\nFA\nia\nbin\n3\n3\nbd\na\n8)\n=\n*]\n*\n\nSALE C\n\nRAE\n\nwae = oy Fe. 7\nSe Se\nSO,\n\na, i\n¥,\n\nAs\n\nowl\n\n\\\n\n\\\\\n\nAs\n\nMi\n\nSAAN\n\ney\n\n\\\n\nTRL TTR\n\ncaf Oe",
+  "ocr_confidence": 38.6530612244898
+}

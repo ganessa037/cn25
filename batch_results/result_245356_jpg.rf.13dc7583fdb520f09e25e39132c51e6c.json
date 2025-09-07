@@ -1,0 +1,15 @@
+{
+  "image_name": "245356_jpg.rf.13dc7583fdb520f09e25e39132c51e6c.jpg",
+  "image_path": "../IC_photos/245356_jpg.rf.13dc7583fdb520f09e25e39132c51e6c.jpg",
+  "processing_time": 0.1854870319366455,
+  "document_type": "Unknown",
+  "classification_confidence": 0.0,
+  "image_dimensions": {
+    "width": 480,
+    "height": 360
+  },
+  "extracted_fields": {},
+  "validation_passed": true,
+  "ocr_text": "",
+  "ocr_confidence": 95.0
+}

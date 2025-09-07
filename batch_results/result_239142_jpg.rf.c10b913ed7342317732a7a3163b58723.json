@@ -1,0 +1,23 @@
+{
+  "image_name": "239142_jpg.rf.c10b913ed7342317732a7a3163b58723.jpg",
+  "image_path": "../IC_photos/239142_jpg.rf.c10b913ed7342317732a7a3163b58723.jpg",
+  "processing_time": 0.4408419132232666,
+  "document_type": "Unknown",
+  "classification_confidence": 0.0,
+  "image_dimensions": {
+    "width": 1024,
+    "height": 768
+  },
+  "extracted_fields": {
+    "name": {
+      "value": "Ing",
+      "confidence": 0.7,
+      "method": "pattern",
+      "required": false,
+      "valid": true
+    }
+  },
+  "validation_passed": true,
+  "ocr_text": "ING:\nUALA\"\n\nMPU\n$2506600-K\n\nnogoun\nago00",
+  "ocr_confidence": 58.5
+}

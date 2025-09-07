@@ -1,0 +1,23 @@
+{
+  "image_name": "169023_jpg.rf.35cdd494a4b50885d15bc22b8d31374c.jpg",
+  "image_path": "../IC_photos/169023_jpg.rf.35cdd494a4b50885d15bc22b8d31374c.jpg",
+  "processing_time": 7.563266038894653,
+  "document_type": "Unknown",
+  "classification_confidence": 0.0,
+  "image_dimensions": {
+    "width": 3808,
+    "height": 2470
+  },
+  "extracted_fields": {
+    "name": {
+      "value": "R\n\nAS BALEVSIA RT\n\nARE",
+      "confidence": 0.35,
+      "method": "pattern",
+      "required": false,
+      "valid": false
+    }
+  },
+  "validation_passed": true,
+  "ocr_text": "£.\n€\nat\n<€\n\nR\n\nAS BALEVSIA RT\n\nARE\n\nEx\n\nA GABA INAN\n\nioe\n\nYAS 2S\n\nats\n\naS",
+  "ocr_confidence": 48.6
+}

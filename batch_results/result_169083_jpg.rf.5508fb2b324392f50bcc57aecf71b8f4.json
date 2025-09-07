@@ -1,0 +1,23 @@
+{
+  "image_name": "169083_jpg.rf.5508fb2b324392f50bcc57aecf71b8f4.jpg",
+  "image_path": "../IC_photos/169083_jpg.rf.5508fb2b324392f50bcc57aecf71b8f4.jpg",
+  "processing_time": 4.230332136154175,
+  "document_type": "Unknown",
+  "classification_confidence": 0.0,
+  "image_dimensions": {
+    "width": 3142,
+    "height": 2050
+  },
+  "extracted_fields": {
+    "name": {
+      "value": "Aens",
+      "confidence": 0.7,
+      "method": "pattern",
+      "required": false,
+      "valid": true
+    }
+  },
+  "validation_passed": true,
+  "ocr_text": "Osa\n\n—\n\nAENS == PRN a3 3\nRee OY eS :\n\nTORRES Sire eae\n\nmere eae\n\nPo\n\nAUN UAL AP ST . : a a PETA SESS bt res\nS REUERS ASS See Rt a nepes Sorerer",
+  "ocr_confidence": 33.241379310344826
+}

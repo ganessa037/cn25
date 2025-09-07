@@ -1,0 +1,15 @@
+{
+  "image_name": "239931_jpg.rf.69be9913ca1f85faa8896f684508d45e.jpg",
+  "image_path": "../IC_photos/239931_jpg.rf.69be9913ca1f85faa8896f684508d45e.jpg",
+  "processing_time": 0.16738581657409668,
+  "document_type": "Unknown",
+  "classification_confidence": 0.0,
+  "image_dimensions": {
+    "width": 480,
+    "height": 360
+  },
+  "extracted_fields": {},
+  "validation_passed": true,
+  "ocr_text": "",
+  "ocr_confidence": 95.0
+}

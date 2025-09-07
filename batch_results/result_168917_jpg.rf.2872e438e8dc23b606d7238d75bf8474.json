@@ -1,0 +1,15 @@
+{
+  "image_name": "168917_jpg.rf.2872e438e8dc23b606d7238d75bf8474.jpg",
+  "image_path": "../IC_photos/168917_jpg.rf.2872e438e8dc23b606d7238d75bf8474.jpg",
+  "processing_time": 1.0488028526306152,
+  "document_type": "Unknown",
+  "classification_confidence": 0.0,
+  "image_dimensions": {
+    "width": 1938,
+    "height": 1234
+  },
+  "extracted_fields": {},
+  "validation_passed": true,
+  "ocr_text": "<",
+  "ocr_confidence": 95.0
+}

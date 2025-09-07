@@ -1,0 +1,23 @@
+{
+  "image_name": "242862_jpg.rf.16b6fdaa22bb272f5238958d50cd96f4.jpg",
+  "image_path": "../IC_photos/242862_jpg.rf.16b6fdaa22bb272f5238958d50cd96f4.jpg",
+  "processing_time": 39.376198291778564,
+  "document_type": "Unknown",
+  "classification_confidence": 0.0,
+  "image_dimensions": {
+    "width": 4608,
+    "height": 3456
+  },
+  "extracted_fields": {
+    "name": {
+      "value": "Poe",
+      "confidence": 0.7,
+      "method": "pattern",
+      "required": false,
+      "valid": true
+    }
+  },
+  "validation_passed": true,
+  "ocr_text": "So veg POE ig SG\n\nA\n«\n\n¥\ns",
+  "ocr_confidence": 32.625
+}

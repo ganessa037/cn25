@@ -1,0 +1,262 @@
+{
+  "document_type": "spk",
+  "version": "1.0",
+  "description": "Sijil Pelajaran Malaysia (SPM) Certificate Template",
+  "created_date": "2024-01-15",
+  "last_updated": "2024-01-15",
+  "fields": {
+    "student_name": {
+      "field_type": "text",
+      "required": true,
+      "validation_rules": {
+        "min_length": 2,
+        "max_length": 100,
+        "pattern": "^[A-Z\\s/]+$",
+        "description": "Student full name in uppercase"
+      },
+      "extraction_rules": {
+        "keywords": ["NAMA", "NAME", "STUDENT NAME"],
+        "position": "after_keyword",
+        "region": {
+          "x": 0.2,
+          "y": 0.25,
+          "width": 0.6,
+          "height": 0.1
+        }
+      },
+      "confidence_threshold": 0.8
+    },
+    "ic_number": {
+      "field_type": "text",
+      "required": true,
+      "validation_rules": {
+        "pattern": "^\\d{6}-\\d{2}-\\d{4}$",
+        "description": "Malaysian IC number format: XXXXXX-XX-XXXX"
+      },
+      "extraction_rules": {
+        "keywords": ["NO. KAD PENGENALAN", "IC NO", "NRIC"],
+        "position": "after_keyword",
+        "region": {
+          "x": 0.2,
+          "y": 0.35,
+          "width": 0.4,
+          "height": 0.08
+        }
+      },
+      "confidence_threshold": 0.9
+    },
+    "school_name": {
+      "field_type": "text",
+      "required": true,
+      "validation_rules": {
+        "min_length": 5,
+        "max_length": 200,
+        "pattern": "^[A-Z0-9\\s.,()-]+$",
+        "description": "School name in uppercase"
+      },
+      "extraction_rules": {
+        "keywords": ["SEKOLAH", "SCHOOL", "SMK", "SMU", "MRSM"],
+        "position": "after_keyword",
+        "region": {
+          "x": 0.2,
+          "y": 0.45,
+          "width": 0.7,
+          "height": 0.1
+        }
+      },
+      "confidence_threshold": 0.8
+    },
+    "examination_year": {
+      "field_type": "number",
+      "required": true,
+      "validation_rules": {
+        "min_value": 1980,
+        "max_value": 2030,
+        "pattern": "^(19|20)\\d{2}$",
+        "description": "Examination year (4 digits)"
+      },
+      "extraction_rules": {
+        "keywords": ["TAHUN", "YEAR", "PEPERIKSAAN"],
+        "position": "after_keyword",
+        "region": {
+          "x": 0.2,
+          "y": 0.55,
+          "width": 0.2,
+          "height": 0.08
+        }
+      },
+      "confidence_threshold": 0.9
+    },
+    "certificate_number": {
+      "field_type": "text",
+      "required": false,
+      "validation_rules": {
+        "min_length": 5,
+        "max_length": 50,
+        "pattern": "^[A-Z0-9/-]+$",
+        "description": "Certificate serial number"
+      },
+      "extraction_rules": {
+        "keywords": ["NO. SIJIL", "CERT NO", "CERTIFICATE NO"],
+        "position": "after_keyword",
+        "region": {
+          "x": 0.5,
+          "y": 0.15,
+          "width": 0.4,
+          "height": 0.08
+        }
+      },
+      "confidence_threshold": 0.7
+    },
+    "subjects": {
+      "field_type": "array",
+      "required": false,
+      "validation_rules": {
+        "min_items": 1,
+        "max_items": 15,
+        "item_pattern": "^[A-Z\\s]+\\s+[A-F1-9]+$",
+        "description": "List of subjects with grades"
+      },
+      "extraction_rules": {
+        "keywords": ["MATA PELAJARAN", "SUBJECTS", "KEPUTUSAN"],
+        "position": "table_below",
+        "region": {
+          "x": 0.1,
+          "y": 0.65,
+          "width": 0.8,
+          "height": 0.25
+        }
+      },
+      "confidence_threshold": 0.6
+    },
+    "issue_date": {
+      "field_type": "date",
+      "required": false,
+      "validation_rules": {
+        "format": "DD/MM/YYYY",
+        "min_date": "01/01/1980",
+        "max_date": "31/12/2030",
+        "description": "Certificate issue date"
+      },
+      "extraction_rules": {
+        "keywords": ["TARIKH", "DATE", "DIKELUARKAN"],
+        "position": "after_keyword",
+        "region": {
+          "x": 0.6,
+          "y": 0.9,
+          "width": 0.3,
+          "height": 0.08
+        }
+      },
+      "confidence_threshold": 0.7
+    }
+  },
+  "document_structure": {
+    "header": {
+      "region": {
+        "x": 0.0,
+        "y": 0.0,
+        "width": 1.0,
+        "height": 0.2
+      },
+      "expected_text": ["SIJIL PELAJARAN MALAYSIA", "SPM", "MALAYSIA"]
+    },
+    "student_info": {
+      "region": {
+        "x": 0.0,
+        "y": 0.2,
+        "width": 1.0,
+        "height": 0.4
+      },
+      "fields": ["student_name", "ic_number", "school_name", "examination_year"]
+    },
+    "results_table": {
+      "region": {
+        "x": 0.0,
+        "y": 0.6,
+        "width": 1.0,
+        "height": 0.3
+      },
+      "fields": ["subjects"]
+    },
+    "footer": {
+      "region": {
+        "x": 0.0,
+        "y": 0.9,
+        "width": 1.0,
+        "height": 0.1
+      },
+      "fields": ["issue_date", "certificate_number"]
+    }
+  },
+  "ocr_settings": {
+    "language": ["eng", "msa"],
+    "preprocessing": {
+      "deskew": true,
+      "denoise": true,
+      "enhance_contrast": true,
+      "binarize": false
+    },
+    "confidence_threshold": 0.6,
+    "psm_mode": 6
+  },
+  "validation_rules": {
+    "cross_field_validation": [
+      {
+        "rule": "ic_year_match",
+        "description": "IC birth year should be reasonable compared to examination year",
+        "fields": ["ic_number", "examination_year"],
+        "validation_function": "validate_ic_exam_year_consistency"
+      },
+      {
+        "rule": "name_consistency",
+        "description": "Name should be consistent across document",
+        "fields": ["student_name"],
+        "validation_function": "validate_name_consistency"
+      }
+    ],
+    "document_integrity": {
+      "required_keywords": ["SIJIL", "PELAJARAN", "MALAYSIA"],
+      "forbidden_keywords": ["COPY", "DUPLICATE", "PHOTOCOPY"],
+      "min_confidence_score": 0.7
+    }
+  },
+  "error_handling": {
+    "fallback_extraction": {
+      "enable_fuzzy_matching": true,
+      "fuzzy_threshold": 0.8,
+      "enable_manual_review": true
+    },
+    "common_ocr_errors": {
+      "character_substitutions": {
+        "0": "O",
+        "1": "I",
+        "5": "S",
+        "8": "B"
+      },
+      "word_corrections": {
+        "SIJIL": ["S1JIL", "SIJIL", "S1J1L"],
+        "PELAJARAN": ["PELAJARAN", "PELAJAR4N", "PEL4JARAN"],
+        "MALAYSIA": ["MALAYSIA", "MAL4YSIA", "MALAYS1A"]
+      }
+    }
+  },
+  "quality_checks": {
+    "image_quality": {
+      "min_resolution": [800, 600],
+      "max_file_size_mb": 10,
+      "supported_formats": ["jpg", "jpeg", "png", "tiff", "pdf"]
+    },
+    "text_quality": {
+      "min_text_length": 50,
+      "max_noise_ratio": 0.3,
+      "required_text_regions": 3
+    }
+  },
+  "output_format": {
+    "include_confidence_scores": true,
+    "include_bounding_boxes": true,
+    "include_raw_text": false,
+    "normalize_output": true
+  }
+}

@@ -1,0 +1,1 @@
+"""Core detection modules for license plate processing"""

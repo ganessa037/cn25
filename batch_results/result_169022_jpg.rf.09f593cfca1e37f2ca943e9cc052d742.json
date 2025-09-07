@@ -1,0 +1,23 @@
+{
+  "image_name": "169022_jpg.rf.09f593cfca1e37f2ca943e9cc052d742.jpg",
+  "image_path": "../IC_photos/169022_jpg.rf.09f593cfca1e37f2ca943e9cc052d742.jpg",
+  "processing_time": 7.228744983673096,
+  "document_type": "Unknown",
+  "classification_confidence": 0.0,
+  "image_dimensions": {
+    "width": 4003,
+    "height": 2614
+  },
+  "extracted_fields": {
+    "name": {
+      "value": "Ay",
+      "confidence": 0.7,
+      "method": "pattern",
+      "required": false,
+      "valid": true
+    }
+  },
+  "validation_passed": true,
+  "ocr_text": "7)\n\n\\\nAY\n\nne:\n\nSA\n\nete:\n\npd et kgands\n\n51\n€",
+  "ocr_confidence": 40.27272727272727
+}

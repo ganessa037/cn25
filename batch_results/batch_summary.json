@@ -1,0 +1,855 @@
+{
+  "total_images": 50,
+  "successful_processes": 50,
+  "failed_processes": 0,
+  "success_rate": 100.0,
+  "processing_timestamp": "2025-09-07 22:31:14",
+  "results": [
+    {
+      "image_name": "169023_jpg.rf.35cdd494a4b50885d15bc22b8d31374c.jpg",
+      "image_path": "../IC_photos/169023_jpg.rf.35cdd494a4b50885d15bc22b8d31374c.jpg",
+      "processing_time": 7.563266038894653,
+      "document_type": "Unknown",
+      "classification_confidence": 0.0,
+      "image_dimensions": {
+        "width": 3808,
+        "height": 2470
+      },
+      "extracted_fields": {
+        "name": {
+          "value": "R\n\nAS BALEVSIA RT\n\nARE",
+          "confidence": 0.35,
+          "method": "pattern",
+          "required": false,
+          "valid": false
+        }
+      },
+      "validation_passed": true,
+      "ocr_text": "£.\n€\nat\n<€\n\nR\n\nAS BALEVSIA RT\n\nARE\n\nEx\n\nA GABA INAN\n\nioe\n\nYAS 2S\n\nats\n\naS",
+      "ocr_confidence": 48.6
+    },
+    {
+      "image_name": "235021_jpeg_jpg.rf.7bf00f93aefbece070fdb0436d395772.jpg",
+      "image_path": "../IC_photos/235021_jpeg_jpg.rf.7bf00f93aefbece070fdb0436d395772.jpg",
+      "processing_time": 0.39949893951416016,
+      "document_type": "Unknown",
+      "classification_confidence": 0.0,
+      "image_dimensions": {
+        "width": 1040,
+        "height": 780
+      },
+      "extracted_fields": {},
+      "validation_passed": true,
+      "ocr_text": "",
+      "ocr_confidence": 95.0
+    },
+    {
+      "image_name": "245356_jpg.rf.13dc7583fdb520f09e25e39132c51e6c.jpg",
+      "image_path": "../IC_photos/245356_jpg.rf.13dc7583fdb520f09e25e39132c51e6c.jpg",
+      "processing_time": 0.1854870319366455,
+      "document_type": "Unknown",
+      "classification_confidence": 0.0,
+      "image_dimensions": {
+        "width": 480,
+        "height": 360
+      },
+      "extracted_fields": {},
+      "validation_passed": true,
+      "ocr_text": "",
+      "ocr_confidence": 95.0
+    },
+    {
+      "image_name": "241846_jpg.rf.837567ffa13a05b0579a9f5915fca551.jpg",
+      "image_path": "../IC_photos/241846_jpg.rf.837567ffa13a05b0579a9f5915fca551.jpg",
+      "processing_time": 0.17035484313964844,
+      "document_type": "Unknown",
+      "classification_confidence": 0.0,
+      "image_dimensions": {
+        "width": 480,
+        "height": 360
+      },
+      "extracted_fields": {},
+      "validation_passed": true,
+      "ocr_text": "",
+      "ocr_confidence": 95.0
+    },
+    {
+      "image_name": "235012_jpeg_jpg.rf.f3c5d5f2edf8e8f6dc3d9ad579c52bf6.jpg",
+      "image_path": "../IC_photos/235012_jpeg_jpg.rf.f3c5d5f2edf8e8f6dc3d9ad579c52bf6.jpg",
+      "processing_time": 0.36823606491088867,
+      "document_type": "Unknown",
+      "classification_confidence": 0.0,
+      "image_dimensions": {
+        "width": 1040,
+        "height": 780
+      },
+      "extracted_fields": {},
+      "validation_passed": true,
+      "ocr_text": "",
+      "ocr_confidence": 95.0
+    },
+    {
+      "image_name": "240182_jpg.rf.0fbfec96a81a00c780770a5e4b84cede.jpg",
+      "image_path": "../IC_photos/240182_jpg.rf.0fbfec96a81a00c780770a5e4b84cede.jpg",
+      "processing_time": 0.1840980052947998,
+      "document_type": "Unknown",
+      "classification_confidence": 0.0,
+      "image_dimensions": {
+        "width": 480,
+        "height": 360
+      },
+      "extracted_fields": {},
+      "validation_passed": true,
+      "ocr_text": "",
+      "ocr_confidence": 95.0
+    },
+    {
+      "image_name": "236430_jpg.rf.89d4896850b84b64159fa533573ec5fd.jpg",
+      "image_path": "../IC_photos/236430_jpg.rf.89d4896850b84b64159fa533573ec5fd.jpg",
+      "processing_time": 0.16933798789978027,
+      "document_type": "Unknown",
+      "classification_confidence": 0.0,
+      "image_dimensions": {
+        "width": 480,
+        "height": 360
+      },
+      "extracted_fields": {},
+      "validation_passed": true,
+      "ocr_text": "",
+      "ocr_confidence": 95.0
+    },
+    {
+      "image_name": "234996_jpeg_jpg.rf.a76bacfb61f6f9d81cff88cdc118f445.jpg",
+      "image_path": "../IC_photos/234996_jpeg_jpg.rf.a76bacfb61f6f9d81cff88cdc118f445.jpg",
+      "processing_time": 0.31520795822143555,
+      "document_type": "Unknown",
+      "classification_confidence": 0.0,
+      "image_dimensions": {
+        "width": 1040,
+        "height": 780
+      },
+      "extracted_fields": {},
+      "validation_passed": true,
+      "ocr_text": "4\n26\n\nul",
+      "ocr_confidence": 56.75
+    },
+    {
+      "image_name": "245122_jpg.rf.42f7587b7568e3e0fdb75d6439cb003b.jpg",
+      "image_path": "../IC_photos/245122_jpg.rf.42f7587b7568e3e0fdb75d6439cb003b.jpg",
+      "processing_time": 0.16814517974853516,
+      "document_type": "Unknown",
+      "classification_confidence": 0.0,
+      "image_dimensions": {
+        "width": 480,
+        "height": 360
+      },
+      "extracted_fields": {},
+      "validation_passed": true,
+      "ocr_text": "",
+      "ocr_confidence": 95.0
+    },
+    {
+      "image_name": "243269_jpg.rf.9dfdc8bedf4d4adc139719528cf31898.jpg",
+      "image_path": "../IC_photos/243269_jpg.rf.9dfdc8bedf4d4adc139719528cf31898.jpg",
+      "processing_time": 5.9836578369140625,
+      "document_type": "Unknown",
+      "classification_confidence": 0.0,
+      "image_dimensions": {
+        "width": 4032,
+        "height": 3024
+      },
+      "extracted_fields": {
+        "name": {
+          "value": "Waver A",
+          "confidence": 0.7,
+          "method": "pattern",
+          "required": false,
+          "valid": true
+        }
+      },
+      "validation_passed": true,
+      "ocr_text": "Ly\n\nUy q See\n\nWAVER A Dyan ptt.\n\n——t—\n\nnr mr",
+      "ocr_confidence": 47.4
+    },
+    {
+      "image_name": "242692_jpeg_jpg.rf.4f8c087d9dff4646dd33e0ba27008629.jpg",
+      "image_path": "../IC_photos/242692_jpeg_jpg.rf.4f8c087d9dff4646dd33e0ba27008629.jpg",
+      "processing_time": 0.3402841091156006,
+      "document_type": "Unknown",
+      "classification_confidence": 0.0,
+      "image_dimensions": {
+        "width": 1040,
+        "height": 780
+      },
+      "extracted_fields": {},
+      "validation_passed": true,
+      "ocr_text": "",
+      "ocr_confidence": 95.0
+    },
+    {
+      "image_name": "242856_jpg.rf.8791e2efb8ebca8be3f568895c13ebd4.jpg",
+      "image_path": "../IC_photos/242856_jpg.rf.8791e2efb8ebca8be3f568895c13ebd4.jpg",
+      "processing_time": 18.59296488761902,
+      "document_type": "Unknown",
+      "classification_confidence": 0.0,
+      "image_dimensions": {
+        "width": 4608,
+        "height": 3456
+      },
+      "extracted_fields": {
+        "name": {
+          "value": "Saas",
+          "confidence": 0.7,
+          "method": "pattern",
+          "required": false,
+          "valid": true
+        }
+      },
+      "validation_passed": true,
+      "ocr_text": "i\n\nGo\n\nSAAS\n\neh\nWe\nF4\nsay)\n5\nz\nby\n\nER.\n\nxi\n\nALAY StA KERAJAAN MALAYSIA,\n\nIALAY SIA Nuk AN At AYSIU RERASRAN WM,\n\nShad",
+      "ocr_confidence": 43.476190476190474
+    },
+    {
+      "image_name": "236409_jpg.rf.9d9d01750e36dede37bbb59a28bd2f7e.jpg",
+      "image_path": "../IC_photos/236409_jpg.rf.9d9d01750e36dede37bbb59a28bd2f7e.jpg",
+      "processing_time": 0.180617094039917,
+      "document_type": "Unknown",
+      "classification_confidence": 0.0,
+      "image_dimensions": {
+        "width": 480,
+        "height": 360
+      },
+      "extracted_fields": {},
+      "validation_passed": true,
+      "ocr_text": "",
+      "ocr_confidence": 95.0
+    },
+    {
+      "image_name": "168917_jpg.rf.2872e438e8dc23b606d7238d75bf8474.jpg",
+      "image_path": "../IC_photos/168917_jpg.rf.2872e438e8dc23b606d7238d75bf8474.jpg",
+      "processing_time": 1.0488028526306152,
+      "document_type": "Unknown",
+      "classification_confidence": 0.0,
+      "image_dimensions": {
+        "width": 1938,
+        "height": 1234
+      },
+      "extracted_fields": {},
+      "validation_passed": true,
+      "ocr_text": "<",
+      "ocr_confidence": 95.0
+    },
+    {
+      "image_name": "236532_jpeg_jpg.rf.83810dde6552c02e03af1b2d2f530262.jpg",
+      "image_path": "../IC_photos/236532_jpeg_jpg.rf.83810dde6552c02e03af1b2d2f530262.jpg",
+      "processing_time": 0.4725003242492676,
+      "document_type": "Unknown",
+      "classification_confidence": 0.0,
+      "image_dimensions": {
+        "width": 720,
+        "height": 1280
+      },
+      "extracted_fields": {},
+      "validation_passed": true,
+      "ocr_text": "",
+      "ocr_confidence": 95.0
+    },
+    {
+      "image_name": "235150_jpg.rf.27a9b7293304582f82625440e2b9843d.jpg",
+      "image_path": "../IC_photos/235150_jpg.rf.27a9b7293304582f82625440e2b9843d.jpg",
+      "processing_time": 0.15917062759399414,
+      "document_type": "Unknown",
+      "classification_confidence": 0.0,
+      "image_dimensions": {
+        "width": 480,
+        "height": 360
+      },
+      "extracted_fields": {},
+      "validation_passed": true,
+      "ocr_text": "",
+      "ocr_confidence": 95.0
+    },
+    {
+      "image_name": "246648_jpeg_jpg.rf.d90a6bf060bc095f0ee9b088cda0401a.jpg",
+      "image_path": "../IC_photos/246648_jpeg_jpg.rf.d90a6bf060bc095f0ee9b088cda0401a.jpg",
+      "processing_time": 0.49225592613220215,
+      "document_type": "Unknown",
+      "classification_confidence": 0.0,
+      "image_dimensions": {
+        "width": 960,
+        "height": 1280
+      },
+      "extracted_fields": {},
+      "validation_passed": true,
+      "ocr_text": "",
+      "ocr_confidence": 95.0
+    },
+    {
+      "image_name": "235160_jpg.rf.727a33d9f99c9b6d1c4ca4d97bfc4a32.jpg",
+      "image_path": "../IC_photos/235160_jpg.rf.727a33d9f99c9b6d1c4ca4d97bfc4a32.jpg",
+      "processing_time": 0.1669909954071045,
+      "document_type": "Unknown",
+      "classification_confidence": 0.0,
+      "image_dimensions": {
+        "width": 480,
+        "height": 360
+      },
+      "extracted_fields": {},
+      "validation_passed": true,
+      "ocr_text": "",
+      "ocr_confidence": 95.0
+    },
+    {
+      "image_name": "245112_jpg.rf.4bbefa63665f8c41c13a49848a6eb092.jpg",
+      "image_path": "../IC_photos/245112_jpg.rf.4bbefa63665f8c41c13a49848a6eb092.jpg",
+      "processing_time": 0.16699695587158203,
+      "document_type": "Unknown",
+      "classification_confidence": 0.0,
+      "image_dimensions": {
+        "width": 480,
+        "height": 360
+      },
+      "extracted_fields": {},
+      "validation_passed": true,
+      "ocr_text": "",
+      "ocr_confidence": 95.0
+    },
+    {
+      "image_name": "245810_jpg.rf.e3ce322d967dafe0c9b57cd5493adbc8.jpg",
+      "image_path": "../IC_photos/245810_jpg.rf.e3ce322d967dafe0c9b57cd5493adbc8.jpg",
+      "processing_time": 0.16365981101989746,
+      "document_type": "Unknown",
+      "classification_confidence": 0.0,
+      "image_dimensions": {
+        "width": 480,
+        "height": 321
+      },
+      "extracted_fields": {},
+      "validation_passed": true,
+      "ocr_text": "",
+      "ocr_confidence": 95.0
+    },
+    {
+      "image_name": "246672_jpeg_jpg.rf.7e18dfbef4fec37b32db58badfc17499.jpg",
+      "image_path": "../IC_photos/246672_jpeg_jpg.rf.7e18dfbef4fec37b32db58badfc17499.jpg",
+      "processing_time": 0.6907258033752441,
+      "document_type": "Unknown",
+      "classification_confidence": 0.0,
+      "image_dimensions": {
+        "width": 960,
+        "height": 1280
+      },
+      "extracted_fields": {},
+      "validation_passed": true,
+      "ocr_text": "",
+      "ocr_confidence": 95.0
+    },
+    {
+      "image_name": "242862_jpg.rf.16b6fdaa22bb272f5238958d50cd96f4.jpg",
+      "image_path": "../IC_photos/242862_jpg.rf.16b6fdaa22bb272f5238958d50cd96f4.jpg",
+      "processing_time": 39.376198291778564,
+      "document_type": "Unknown",
+      "classification_confidence": 0.0,
+      "image_dimensions": {
+        "width": 4608,
+        "height": 3456
+      },
+      "extracted_fields": {
+        "name": {
+          "value": "Poe",
+          "confidence": 0.7,
+          "method": "pattern",
+          "required": false,
+          "valid": true
+        }
+      },
+      "validation_passed": true,
+      "ocr_text": "So veg POE ig SG\n\nA\n«\n\n¥\ns",
+      "ocr_confidence": 32.625
+    },
+    {
+      "image_name": "240231_jpg.rf.2eee17facc6288bc486fa326f6b776f9.jpg",
+      "image_path": "../IC_photos/240231_jpg.rf.2eee17facc6288bc486fa326f6b776f9.jpg",
+      "processing_time": 0.252089262008667,
+      "document_type": "Unknown",
+      "classification_confidence": 0.0,
+      "image_dimensions": {
+        "width": 480,
+        "height": 360
+      },
+      "extracted_fields": {},
+      "validation_passed": true,
+      "ocr_text": "",
+      "ocr_confidence": 95.0
+    },
+    {
+      "image_name": "241903_jpg.rf.79bbb40c6d9701b8f47f2e40c8c7f21e.jpg",
+      "image_path": "../IC_photos/241903_jpg.rf.79bbb40c6d9701b8f47f2e40c8c7f21e.jpg",
+      "processing_time": 0.2122361660003662,
+      "document_type": "Unknown",
+      "classification_confidence": 0.0,
+      "image_dimensions": {
+        "width": 480,
+        "height": 360
+      },
+      "extracted_fields": {},
+      "validation_passed": true,
+      "ocr_text": "",
+      "ocr_confidence": 95.0
+    },
+    {
+      "image_name": "241035_jpg.rf.087042decbe5b4b44520375ea7a61b2d.jpg",
+      "image_path": "../IC_photos/241035_jpg.rf.087042decbe5b4b44520375ea7a61b2d.jpg",
+      "processing_time": 0.14445805549621582,
+      "document_type": "Unknown",
+      "classification_confidence": 0.0,
+      "image_dimensions": {
+        "width": 270,
+        "height": 360
+      },
+      "extracted_fields": {},
+      "validation_passed": true,
+      "ocr_text": "",
+      "ocr_confidence": 95.0
+    },
+    {
+      "image_name": "245351_jpg.rf.15a8ffad369e42c47ed4efd09ff478a4.jpg",
+      "image_path": "../IC_photos/245351_jpg.rf.15a8ffad369e42c47ed4efd09ff478a4.jpg",
+      "processing_time": 0.15806913375854492,
+      "document_type": "Unknown",
+      "classification_confidence": 0.0,
+      "image_dimensions": {
+        "width": 480,
+        "height": 360
+      },
+      "extracted_fields": {},
+      "validation_passed": true,
+      "ocr_text": "",
+      "ocr_confidence": 95.0
+    },
+    {
+      "image_name": "169697_jpg.rf.f5786e2a2499cfa6d78e09b7ef6949c1.jpg",
+      "image_path": "../IC_photos/169697_jpg.rf.f5786e2a2499cfa6d78e09b7ef6949c1.jpg",
+      "processing_time": 5.649250745773315,
+      "document_type": "Unknown",
+      "classification_confidence": 0.0,
+      "image_dimensions": {
+        "width": 3302,
+        "height": 2138
+      },
+      "extracted_fields": {
+        "name": {
+          "value": "Jaar",
+          "confidence": 0.7,
+          "method": "pattern",
+          "required": false,
+          "valid": true
+        }
+      },
+      "validation_passed": true,
+      "ocr_text": "a =\n\ni JAAR tia SUE US Uae UT PTE ‘3\nFr re eG\nSA at any AYRES sabes jal\n\nes x\n\nbd\n4\n‘\n\n*)\n\nevatkG\n\n'\nr\n\nTNARNY, EEL Na OA ’ G phe\nWEEE: IGE TAS TER OS\nees\n\nAKLAY ERAICER eos\nwe aE RA TAREE\n\nFAA eKHERNIBAN KIA oe AY,\nRIN SIREEE A AMMALA Vie\nNET SIRKE RAJ\n\nyh etely\n\nDY SIA De SAAN MACK pee\nLE ARERAIAANKIALAV Sq eee SIAR ER AIS\n\nA ae eee SAK\nEE RAJAANMALaCs\n\nrs ia i\nze oa UIAK\n\n: STARE eae KE :\nSIAR Ea taanssiiarero URL Bs",
+      "ocr_confidence": 28.378048780487806
+    },
+    {
+      "image_name": "169083_jpg.rf.5508fb2b324392f50bcc57aecf71b8f4.jpg",
+      "image_path": "../IC_photos/169083_jpg.rf.5508fb2b324392f50bcc57aecf71b8f4.jpg",
+      "processing_time": 4.230332136154175,
+      "document_type": "Unknown",
+      "classification_confidence": 0.0,
+      "image_dimensions": {
+        "width": 3142,
+        "height": 2050
+      },
+      "extracted_fields": {
+        "name": {
+          "value": "Aens",
+          "confidence": 0.7,
+          "method": "pattern",
+          "required": false,
+          "valid": true
+        }
+      },
+      "validation_passed": true,
+      "ocr_text": "Osa\n\n—\n\nAENS == PRN a3 3\nRee OY eS :\n\nTORRES Sire eae\n\nmere eae\n\nPo\n\nAUN UAL AP ST . : a a PETA SESS bt res\nS REUERS ASS See Rt a nepes Sorerer",
+      "ocr_confidence": 33.241379310344826
+    },
+    {
+      "image_name": "169022_jpg.rf.09f593cfca1e37f2ca943e9cc052d742.jpg",
+      "image_path": "../IC_photos/169022_jpg.rf.09f593cfca1e37f2ca943e9cc052d742.jpg",
+      "processing_time": 7.228744983673096,
+      "document_type": "Unknown",
+      "classification_confidence": 0.0,
+      "image_dimensions": {
+        "width": 4003,
+        "height": 2614
+      },
+      "extracted_fields": {
+        "name": {
+          "value": "Ay",
+          "confidence": 0.7,
+          "method": "pattern",
+          "required": false,
+          "valid": true
+        }
+      },
+      "validation_passed": true,
+      "ocr_text": "7)\n\n\\\nAY\n\nne:\n\nSA\n\nete:\n\npd et kgands\n\n51\n€",
+      "ocr_confidence": 40.27272727272727
+    },
+    {
+      "image_name": "169377_jpg.rf.67c6c5f675c4ff58497059c385c92799.jpg",
+      "image_path": "../IC_photos/169377_jpg.rf.67c6c5f675c4ff58497059c385c92799.jpg",
+      "processing_time": 18.78924798965454,
+      "document_type": "Unknown",
+      "classification_confidence": 0.0,
+      "image_dimensions": {
+        "width": 4160,
+        "height": 3120
+      },
+      "extracted_fields": {},
+      "validation_passed": true,
+      "ocr_text": "",
+      "ocr_confidence": 95.0
+    },
+    {
+      "image_name": "240678_jpg.rf.735870dfdf244e85a49360c2832fb923.jpg",
+      "image_path": "../IC_photos/240678_jpg.rf.735870dfdf244e85a49360c2832fb923.jpg",
+      "processing_time": 0.15197181701660156,
+      "document_type": "Unknown",
+      "classification_confidence": 0.0,
+      "image_dimensions": {
+        "width": 480,
+        "height": 360
+      },
+      "extracted_fields": {},
+      "validation_passed": true,
+      "ocr_text": "",
+      "ocr_confidence": 95.0
+    },
+    {
+      "image_name": "245355_jpg.rf.ac79b75ae7141d493e0cd87f0859d680.jpg",
+      "image_path": "../IC_photos/245355_jpg.rf.ac79b75ae7141d493e0cd87f0859d680.jpg",
+      "processing_time": 0.15662693977355957,
+      "document_type": "Unknown",
+      "classification_confidence": 0.0,
+      "image_dimensions": {
+        "width": 480,
+        "height": 360
+      },
+      "extracted_fields": {},
+      "validation_passed": true,
+      "ocr_text": "",
+      "ocr_confidence": 95.0
+    },
+    {
+      "image_name": "240173_jpg.rf.eaac899692c4a7b230d4e3dc5ecc8908.jpg",
+      "image_path": "../IC_photos/240173_jpg.rf.eaac899692c4a7b230d4e3dc5ecc8908.jpg",
+      "processing_time": 0.164290189743042,
+      "document_type": "Unknown",
+      "classification_confidence": 0.0,
+      "image_dimensions": {
+        "width": 480,
+        "height": 360
+      },
+      "extracted_fields": {},
+      "validation_passed": true,
+      "ocr_text": "",
+      "ocr_confidence": 95.0
+    },
+    {
+      "image_name": "236525_jpeg_jpg.rf.29986f5175f42dc2b6c4b89701e39ecf.jpg",
+      "image_path": "../IC_photos/236525_jpeg_jpg.rf.29986f5175f42dc2b6c4b89701e39ecf.jpg",
+      "processing_time": 0.4875209331512451,
+      "document_type": "Unknown",
+      "classification_confidence": 0.0,
+      "image_dimensions": {
+        "width": 960,
+        "height": 1280
+      },
+      "extracted_fields": {},
+      "validation_passed": true,
+      "ocr_text": "",
+      "ocr_confidence": 95.0
+    },
+    {
+      "image_name": "239140_jpg.rf.51fce6c64f7df949d0bdd43c53cdcfdf.jpg",
+      "image_path": "../IC_photos/239140_jpg.rf.51fce6c64f7df949d0bdd43c53cdcfdf.jpg",
+      "processing_time": 0.4945979118347168,
+      "document_type": "Unknown",
+      "classification_confidence": 0.0,
+      "image_dimensions": {
+        "width": 607,
+        "height": 1080
+      },
+      "extracted_fields": {},
+      "validation_passed": true,
+      "ocr_text": "",
+      "ocr_confidence": 95.0
+    },
+    {
+      "image_name": "241837_jpg.rf.70e3406e596c38cb6f972d7a9fca33e3.jpg",
+      "image_path": "../IC_photos/241837_jpg.rf.70e3406e596c38cb6f972d7a9fca33e3.jpg",
+      "processing_time": 0.15939879417419434,
+      "document_type": "Unknown",
+      "classification_confidence": 0.0,
+      "image_dimensions": {
+        "width": 480,
+        "height": 360
+      },
+      "extracted_fields": {},
+      "validation_passed": true,
+      "ocr_text": "",
+      "ocr_confidence": 95.0
+    },
+    {
+      "image_name": "235130_jpg.rf.53e0b908ea299f7bb35672701daf5ee2.jpg",
+      "image_path": "../IC_photos/235130_jpg.rf.53e0b908ea299f7bb35672701daf5ee2.jpg",
+      "processing_time": 0.16628193855285645,
+      "document_type": "Unknown",
+      "classification_confidence": 0.0,
+      "image_dimensions": {
+        "width": 480,
+        "height": 360
+      },
+      "extracted_fields": {},
+      "validation_passed": true,
+      "ocr_text": "",
+      "ocr_confidence": 95.0
+    },
+    {
+      "image_name": "168945_jpg.rf.4d2aa96760a33df4658be6ef44d7cc6d.jpg",
+      "image_path": "../IC_photos/168945_jpg.rf.4d2aa96760a33df4658be6ef44d7cc6d.jpg",
+      "processing_time": 0.1642470359802246,
+      "document_type": "Unknown",
+      "classification_confidence": 0.0,
+      "image_dimensions": {
+        "width": 480,
+        "height": 304
+      },
+      "extracted_fields": {},
+      "validation_passed": true,
+      "ocr_text": "",
+      "ocr_confidence": 95.0
+    },
+    {
+      "image_name": "239142_jpg.rf.c10b913ed7342317732a7a3163b58723.jpg",
+      "image_path": "../IC_photos/239142_jpg.rf.c10b913ed7342317732a7a3163b58723.jpg",
+      "processing_time": 0.4408419132232666,
+      "document_type": "Unknown",
+      "classification_confidence": 0.0,
+      "image_dimensions": {
+        "width": 1024,
+        "height": 768
+      },
+      "extracted_fields": {
+        "name": {
+          "value": "Ing",
+          "confidence": 0.7,
+          "method": "pattern",
+          "required": false,
+          "valid": true
+        }
+      },
+      "validation_passed": true,
+      "ocr_text": "ING:\nUALA\"\n\nMPU\n$2506600-K\n\nnogoun\nago00",
+      "ocr_confidence": 58.5
+    },
+    {
+      "image_name": "239931_jpg.rf.69be9913ca1f85faa8896f684508d45e.jpg",
+      "image_path": "../IC_photos/239931_jpg.rf.69be9913ca1f85faa8896f684508d45e.jpg",
+      "processing_time": 0.16738581657409668,
+      "document_type": "Unknown",
+      "classification_confidence": 0.0,
+      "image_dimensions": {
+        "width": 480,
+        "height": 360
+      },
+      "extracted_fields": {},
+      "validation_passed": true,
+      "ocr_text": "",
+      "ocr_confidence": 95.0
+    },
+    {
+      "image_name": "242092_jpg.rf.b8566b7999f07d5d07e2a187fc7a2183.jpg",
+      "image_path": "../IC_photos/242092_jpg.rf.b8566b7999f07d5d07e2a187fc7a2183.jpg",
+      "processing_time": 0.4536278247833252,
+      "document_type": "Unknown",
+      "classification_confidence": 0.0,
+      "image_dimensions": {
+        "width": 1024,
+        "height": 768
+      },
+      "extracted_fields": {},
+      "validation_passed": true,
+      "ocr_text": "",
+      "ocr_confidence": 95.0
+    },
+    {
+      "image_name": "242858_jpg.rf.0351eddfd573fde8afa4af02129f4380.jpg",
+      "image_path": "../IC_photos/242858_jpg.rf.0351eddfd573fde8afa4af02129f4380.jpg",
+      "processing_time": 18.699836015701294,
+      "document_type": "Unknown",
+      "classification_confidence": 0.0,
+      "image_dimensions": {
+        "width": 4608,
+        "height": 3456
+      },
+      "extracted_fields": {
+        "name": {
+          "value": "Rcc",
+          "confidence": 0.7,
+          "method": "pattern",
+          "required": false,
+          "valid": true
+        }
+      },
+      "validation_passed": true,
+      "ocr_text": "RCC\n\n¥ aN WY\naN\n\noAY\nWS\n\nYQ",
+      "ocr_confidence": 40.285714285714285
+    },
+    {
+      "image_name": "169728_jpg.rf.e44d3c69f5bbe3590e04eb034f66d3c1.jpg",
+      "image_path": "../IC_photos/169728_jpg.rf.e44d3c69f5bbe3590e04eb034f66d3c1.jpg",
+      "processing_time": 0.1766190528869629,
+      "document_type": "Unknown",
+      "classification_confidence": 0.0,
+      "image_dimensions": {
+        "width": 480,
+        "height": 306
+      },
+      "extracted_fields": {},
+      "validation_passed": true,
+      "ocr_text": "",
+      "ocr_confidence": 95.0
+    },
+    {
+      "image_name": "243316_jpg.rf.6d9cfe9febce9fa9cb5367cd8b7bc206.jpg",
+      "image_path": "../IC_photos/243316_jpg.rf.6d9cfe9febce9fa9cb5367cd8b7bc206.jpg",
+      "processing_time": 9.626830101013184,
+      "document_type": "Unknown",
+      "classification_confidence": 0.0,
+      "image_dimensions": {
+        "width": 4032,
+        "height": 3024
+      },
+      "extracted_fields": {
+        "name": {
+          "value": "Thpesgell Tute",
+          "confidence": 0.7,
+          "method": "pattern",
+          "required": false,
+          "valid": true
+        }
+      },
+      "validation_passed": true,
+      "ocr_text": "Lek\n\nfOIT\n\nTHPESGELL TUTE\n\n$A OSE\n\nede RO BAT AN OD\n\niS\n«|\nFA\nia\nbin\n3\n3\nbd\na\n8)\n=\n*]\n*\n\nSALE C\n\nRAE\n\nwae = oy Fe. 7\nSe Se\nSO,\n\na, i\n¥,\n\nAs\n\nowl\n\n\\\n\n\\\\\n\nAs\n\nMi\n\nSAAN\n\ney\n\n\\\n\nTRL TTR\n\ncaf Oe",
+      "ocr_confidence": 38.6530612244898
+    },
+    {
+      "image_name": "240690_jpg.rf.3eb9c547251dc810b7d956794db99b97.jpg",
+      "image_path": "../IC_photos/240690_jpg.rf.3eb9c547251dc810b7d956794db99b97.jpg",
+      "processing_time": 0.41884589195251465,
+      "document_type": "Unknown",
+      "classification_confidence": 0.0,
+      "image_dimensions": {
+        "width": 1024,
+        "height": 768
+      },
+      "extracted_fields": {},
+      "validation_passed": true,
+      "ocr_text": ".",
+      "ocr_confidence": 95.0
+    },
+    {
+      "image_name": "236399_jpg.rf.26ff6fa426d70ef545dca2f9279c03bf.jpg",
+      "image_path": "../IC_photos/236399_jpg.rf.26ff6fa426d70ef545dca2f9279c03bf.jpg",
+      "processing_time": 0.2272639274597168,
+      "document_type": "Unknown",
+      "classification_confidence": 0.0,
+      "image_dimensions": {
+        "width": 480,
+        "height": 360
+      },
+      "extracted_fields": {
+        "name": {
+          "value": "Bse",
+          "confidence": 0.7,
+          "method": "pattern",
+          "required": false,
+          "valid": true
+        }
+      },
+      "validation_passed": true,
+      "ocr_text": "Stats = BSE,\n‘AD PENGENALAN. aw S\nRATAN TENTERA MALAYSIA LNs :\n\n: Va",
+      "ocr_confidence": 47.25
+    },
+    {
+      "image_name": "235504_jpg.rf.10f085ccf8f40c37620f691c9b4de781.jpg",
+      "image_path": "../IC_photos/235504_jpg.rf.10f085ccf8f40c37620f691c9b4de781.jpg",
+      "processing_time": 7.507800102233887,
+      "document_type": "Unknown",
+      "classification_confidence": 0.0,
+      "image_dimensions": {
+        "width": 4032,
+        "height": 3024
+      },
+      "extracted_fields": {
+        "name": {
+          "value": "Sin",
+          "confidence": 0.7,
+          "method": "pattern",
+          "required": false,
+          "valid": true
+        }
+      },
+      "validation_passed": true,
+      "ocr_text": ">\n\ncoe\nPe\n=\nSIN\n\nNira\n\nSONCTAN\nVEC\n\nEN\n\n| Ba\nHN Aceon\n\nEEE\n\nTY\nEE\n\naa\n\nTATTAAL\n\nSANETRA\n\nS\n\n29)\n\nY",
+      "ocr_confidence": 38.36842105263158
+    },
+    {
+      "image_name": "169121_jpg.rf.a30e0eeb4c1b2eb68bc93b1937bca3f3.jpg",
+      "image_path": "../IC_photos/169121_jpg.rf.a30e0eeb4c1b2eb68bc93b1937bca3f3.jpg",
+      "processing_time": 0.16851401329040527,
+      "document_type": "Unknown",
+      "classification_confidence": 0.0,
+      "image_dimensions": {
+        "width": 480,
+        "height": 308
+      },
+      "extracted_fields": {},
+      "validation_passed": true,
+      "ocr_text": "",
+      "ocr_confidence": 95.0
+    },
+    {
+      "image_name": "242712_jpeg_jpg.rf.ed56074f5591eb29703c82b428a15748.jpg",
+      "image_path": "../IC_photos/242712_jpeg_jpg.rf.ed56074f5591eb29703c82b428a15748.jpg",
+      "processing_time": 0.3125600814819336,
+      "document_type": "Unknown",
+      "classification_confidence": 0.0,
+      "image_dimensions": {
+        "width": 1040,
+        "height": 780
+      },
+      "extracted_fields": {},
+      "validation_passed": true,
+      "ocr_text": "",
+      "ocr_confidence": 95.0
+    },
+    {
+      "image_name": "169041_jpg.rf.2d27bc740180bc53594afc09f5b888bf.jpg",
+      "image_path": "../IC_photos/169041_jpg.rf.2d27bc740180bc53594afc09f5b888bf.jpg",
+      "processing_time": 0.16032910346984863,
+      "document_type": "Unknown",
+      "classification_confidence": 0.0,
+      "image_dimensions": {
+        "width": 480,
+        "height": 313
+      },
+      "extracted_fields": {},
+      "validation_passed": true,
+      "ocr_text": "",
+      "ocr_confidence": 95.0
+    }
+  ]
+}

@@ -1,0 +1,321 @@
+{
+  "training_config_version": "1.0.0",
+  "last_updated": "2024-01-15T10:00:00Z",
+  "classification": {
+    "model_type": "random_forest",
+    "hyperparameters": {
+      "n_estimators": 100,
+      "max_depth": 10,
+      "min_samples_split": 5,
+      "min_samples_leaf": 2,
+      "max_features": "sqrt",
+      "bootstrap": true,
+      "random_state": 42,
+      "n_jobs": -1
+    },
+    "feature_extraction": {
+      "image_features": {
+        "resize_dimensions": [224, 224],
+        "color_histograms": true,
+        "texture_features": true,
+        "edge_features": true,
+        "shape_features": true
+      },
+      "text_features": {
+        "character_distribution": true,
+        "word_count": true,
+        "line_count": true,
+        "text_density": true,
+        "language_detection": true
+      },
+      "layout_features": {
+        "aspect_ratio": true,
+        "text_regions": true,
+        "whitespace_analysis": true,
+        "structure_analysis": true
+      }
+    },
+    "data_preprocessing": {
+      "image_preprocessing": {
+        "normalize": true,
+        "denoise": true,
+        "contrast_enhancement": true,
+        "rotation_correction": true
+      },
+      "data_augmentation": {
+        "enabled": true,
+        "rotation_range": 5,
+        "brightness_range": 0.2,
+        "noise_factor": 0.1,
+        "blur_probability": 0.1
+      }
+    },
+    "training_parameters": {
+      "train_test_split": 0.8,
+      "validation_split": 0.2,
+      "cross_validation_folds": 5,
+      "stratify": true,
+      "shuffle": true,
+      "random_state": 42
+    },
+    "evaluation_metrics": [
+      "accuracy",
+      "precision",
+      "recall",
+      "f1_score",
+      "confusion_matrix",
+      "classification_report"
+    ]
+  },
+  "field_extraction": {
+    "mykad": {
+      "model_type": "template_matching",
+      "template_config": {
+        "template_count": 15,
+        "matching_threshold": 0.8,
+        "scale_invariant": true,
+        "rotation_invariant": true
+      },
+      "ocr_config": {
+        "engine": "paddleocr",
+        "language": "en",
+        "confidence_threshold": 0.7,
+        "preprocessing": {
+          "denoise": true,
+          "sharpen": true,
+          "contrast_enhancement": true
+        }
+      },
+      "field_definitions": {
+        "name": {
+          "required": true,
+          "validation_pattern": "^[A-Za-z\\s]+$",
+          "max_length": 100,
+          "extraction_method": "template_ocr"
+        },
+        "ic_number": {
+          "required": true,
+          "validation_pattern": "^\\d{6}-\\d{2}-\\d{4}$",
+          "max_length": 14,
+          "extraction_method": "template_ocr"
+        },
+        "address": {
+          "required": true,
+          "validation_pattern": "^[A-Za-z0-9\\s,.-]+$",
+          "max_length": 200,
+          "extraction_method": "template_ocr"
+        },
+        "date_of_birth": {
+          "required": true,
+          "validation_pattern": "^\\d{2}/\\d{2}/\\d{4}$",
+          "max_length": 10,
+          "extraction_method": "template_ocr"
+        },
+        "place_of_birth": {
+          "required": false,
+          "validation_pattern": "^[A-Za-z\\s]+$",
+          "max_length": 50,
+          "extraction_method": "template_ocr"
+        },
+        "gender": {
+          "required": true,
+          "validation_pattern": "^(LELAKI|PEREMPUAN)$",
+          "max_length": 10,
+          "extraction_method": "template_ocr"
+        },
+        "religion": {
+          "required": false,
+          "validation_pattern": "^[A-Za-z\\s]+$",
+          "max_length": 20,
+          "extraction_method": "template_ocr"
+        },
+        "race": {
+          "required": false,
+          "validation_pattern": "^[A-Za-z\\s]+$",
+          "max_length": 20,
+          "extraction_method": "template_ocr"
+        }
+      },
+      "training_parameters": {
+        "template_learning_rate": 0.01,
+        "max_iterations": 1000,
+        "convergence_threshold": 0.001,
+        "validation_split": 0.2
+      }
+    },
+    "spk": {
+      "model_type": "template_matching",
+      "template_config": {
+        "template_count": 12,
+        "matching_threshold": 0.8,
+        "scale_invariant": true,
+        "rotation_invariant": true
+      },
+      "ocr_config": {
+        "engine": "paddleocr",
+        "language": "en",
+        "confidence_threshold": 0.7,
+        "preprocessing": {
+          "denoise": true,
+          "sharpen": true,
+          "contrast_enhancement": true
+        }
+      },
+      "field_definitions": {
+        "name": {
+          "required": true,
+          "validation_pattern": "^[A-Za-z\\s]+$",
+          "max_length": 100,
+          "extraction_method": "template_ocr"
+        },
+        "ic_number": {
+          "required": true,
+          "validation_pattern": "^\\d{6}-\\d{2}-\\d{4}$",
+          "max_length": 14,
+          "extraction_method": "template_ocr"
+        },
+        "address": {
+          "required": true,
+          "validation_pattern": "^[A-Za-z0-9\\s,.-]+$",
+          "max_length": 200,
+          "extraction_method": "template_ocr"
+        },
+        "date_of_birth": {
+          "required": true,
+          "validation_pattern": "^\\d{2}/\\d{2}/\\d{4}$",
+          "max_length": 10,
+          "extraction_method": "template_ocr"
+        },
+        "place_of_birth": {
+          "required": false,
+          "validation_pattern": "^[A-Za-z\\s]+$",
+          "max_length": 50,
+          "extraction_method": "template_ocr"
+        },
+        "gender": {
+          "required": true,
+          "validation_pattern": "^(LELAKI|PEREMPUAN)$",
+          "max_length": 10,
+          "extraction_method": "template_ocr"
+        },
+        "marital_status": {
+          "required": false,
+          "validation_pattern": "^(BUJANG|BERKAHWIN|DUDA|JANDA)$",
+          "max_length": 15,
+          "extraction_method": "template_ocr"
+        },
+        "occupation": {
+          "required": false,
+          "validation_pattern": "^[A-Za-z\\s]+$",
+          "max_length": 50,
+          "extraction_method": "template_ocr"
+        }
+      },
+      "training_parameters": {
+        "template_learning_rate": 0.01,
+        "max_iterations": 1000,
+        "convergence_threshold": 0.001,
+        "validation_split": 0.2
+      }
+    }
+  },
+  "data_management": {
+    "dataset_paths": {
+      "training_data": "data/training/",
+      "validation_data": "data/validation/",
+      "test_data": "data/test/",
+      "synthetic_data": "data/synthetic/"
+    },
+    "data_format": {
+      "image_format": "jpg",
+      "annotation_format": "json",
+      "metadata_format": "json"
+    },
+    "data_quality": {
+      "min_image_resolution": [800, 600],
+      "max_image_size_mb": 10,
+      "required_image_quality": 0.7,
+      "annotation_completeness": 0.95
+    },
+    "data_augmentation": {
+      "enabled": true,
+      "augmentation_factor": 3,
+      "techniques": [
+        "rotation",
+        "brightness",
+        "contrast",
+        "noise",
+        "blur",
+        "perspective"
+      ]
+    }
+  },
+  "training_infrastructure": {
+    "hardware_requirements": {
+      "min_ram_gb": 16,
+      "min_cpu_cores": 4,
+      "gpu_required": false,
+      "storage_gb": 50
+    },
+    "software_requirements": {
+      "python_version": ">=3.8",
+      "opencv_version": ">=4.5.0",
+      "scikit_learn_version": ">=1.0.0",
+      "paddleocr_version": ">=2.6.0"
+    },
+    "training_monitoring": {
+      "log_level": "INFO",
+      "save_checkpoints": true,
+      "checkpoint_frequency": 10,
+      "early_stopping": {
+        "enabled": true,
+        "patience": 20,
+        "min_delta": 0.001
+      },
+      "metrics_logging": {
+        "enabled": true,
+        "log_frequency": 5,
+        "save_plots": true
+      }
+    }
+  },
+  "model_deployment": {
+    "model_format": "pickle",
+    "compression": true,
+    "versioning": {
+      "scheme": "semantic",
+      "auto_increment": true
+    },
+    "validation_requirements": {
+      "min_accuracy": 0.90,
+      "min_f1_score": 0.90,
+      "max_processing_time_ms": 1000,
+      "max_memory_usage_mb": 500
+    },
+    "deployment_targets": [
+      "development",
+      "staging",
+      "production"
+    ]
+  },
+  "experiment_tracking": {
+    "enabled": true,
+    "tracking_backend": "local",
+    "experiment_name_format": "document_parser_{model_type}_{timestamp}",
+    "tracked_metrics": [
+      "accuracy",
+      "precision",
+      "recall",
+      "f1_score",
+      "training_time",
+      "model_size",
+      "inference_time"
+    ],
+    "artifact_storage": {
+      "models": "model_artifacts/document_parser/models/",
+      "logs": "model_artifacts/document_parser/logs/",
+      "plots": "model_artifacts/document_parser/plots/",
+      "checkpoints": "model_artifacts/document_parser/checkpoints/"
+    }
+  }
+}

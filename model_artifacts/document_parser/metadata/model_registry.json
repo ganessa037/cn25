@@ -1,0 +1,219 @@
+{
+  "registry_version": "1.0.0",
+  "last_updated": "2024-01-15T10:30:00Z",
+  "classification": {
+    "current_version": "1.0.0",
+    "model_type": "random_forest",
+    "versions": {
+      "1.0.0": {
+        "path": "models/classification/v1.0.0/",
+        "model_file": "classification_model.pkl",
+        "config_file": "model_config.json",
+        "created_at": "2024-01-15T10:30:00Z",
+        "created_by": "training_script",
+        "accuracy": 0.95,
+        "precision": 0.94,
+        "recall": 0.96,
+        "f1_score": 0.95,
+        "training_data_size": 10000,
+        "validation_data_size": 2000,
+        "test_data_size": 2000,
+        "training_duration_minutes": 45,
+        "model_size_mb": 12.5,
+        "feature_count": 150,
+        "hyperparameters": {
+          "n_estimators": 100,
+          "max_depth": 10,
+          "min_samples_split": 5,
+          "min_samples_leaf": 2,
+          "random_state": 42
+        },
+        "performance_metrics": {
+          "confusion_matrix": [[850, 50], [30, 870]],
+          "classification_report": {
+            "mykad": {"precision": 0.94, "recall": 0.96, "f1-score": 0.95},
+            "spk": {"precision": 0.96, "recall": 0.94, "f1-score": 0.95}
+          },
+          "processing_time_ms": 150,
+          "memory_usage_mb": 25
+        },
+        "validation_status": "passed",
+        "deployment_status": "production",
+        "description": "Initial production classification model trained on balanced dataset",
+        "tags": ["production", "stable", "v1"]
+      }
+    }
+  },
+  "field_extraction": {
+    "mykad": {
+      "current_version": "1.0.0",
+      "model_type": "template_matching",
+      "versions": {
+        "1.0.0": {
+          "path": "models/field_extraction/mykad/v1.0.0/",
+          "model_file": "mykad_extraction_model.pkl",
+          "template_file": "mykad_templates.json",
+          "config_file": "extraction_config.json",
+          "created_at": "2024-01-15T11:00:00Z",
+          "created_by": "training_script",
+          "overall_accuracy": 0.96,
+          "field_accuracies": {
+            "name": 0.98,
+            "ic_number": 0.99,
+            "address": 0.92,
+            "date_of_birth": 0.97,
+            "place_of_birth": 0.94,
+            "gender": 0.99,
+            "religion": 0.95,
+            "race": 0.96
+          },
+          "training_data_size": 5000,
+          "validation_data_size": 1000,
+          "test_data_size": 1000,
+          "training_duration_minutes": 30,
+          "model_size_mb": 8.2,
+          "template_count": 15,
+          "performance_metrics": {
+            "extraction_success_rate": 0.96,
+            "validation_pass_rate": 0.94,
+            "processing_time_ms": 200,
+            "memory_usage_mb": 30
+          },
+          "validation_status": "passed",
+          "deployment_status": "production",
+          "description": "MyKad field extraction model with template matching and OCR",
+          "tags": ["production", "mykad", "template-based"]
+        }
+      }
+    },
+    "spk": {
+      "current_version": "1.0.0",
+      "model_type": "template_matching",
+      "versions": {
+        "1.0.0": {
+          "path": "models/field_extraction/spk/v1.0.0/",
+          "model_file": "spk_extraction_model.pkl",
+          "template_file": "spk_templates.json",
+          "config_file": "extraction_config.json",
+          "created_at": "2024-01-15T11:30:00Z",
+          "created_by": "training_script",
+          "overall_accuracy": 0.94,
+          "field_accuracies": {
+            "name": 0.96,
+            "ic_number": 0.98,
+            "address": 0.90,
+            "date_of_birth": 0.95,
+            "place_of_birth": 0.92,
+            "gender": 0.97,
+            "marital_status": 0.93,
+            "occupation": 0.89
+          },
+          "training_data_size": 3000,
+          "validation_data_size": 600,
+          "test_data_size": 600,
+          "training_duration_minutes": 25,
+          "model_size_mb": 6.8,
+          "template_count": 12,
+          "performance_metrics": {
+            "extraction_success_rate": 0.94,
+            "validation_pass_rate": 0.92,
+            "processing_time_ms": 180,
+            "memory_usage_mb": 28
+          },
+          "validation_status": "passed",
+          "deployment_status": "production",
+          "description": "SPK field extraction model with template matching and OCR",
+          "tags": ["production", "spk", "template-based"]
+        }
+      }
+    }
+  },
+  "ocr": {
+    "text_detection": {
+      "current_version": "1.0.0",
+      "model_type": "paddleocr",
+      "versions": {
+        "1.0.0": {
+          "path": "models/ocr/text_detection/v1.0.0/",
+          "model_source": "paddleocr",
+          "language": "en",
+          "created_at": "2024-01-15T09:00:00Z",
+          "accuracy": 0.92,
+          "performance_metrics": {
+            "detection_accuracy": 0.92,
+            "processing_time_ms": 300,
+            "memory_usage_mb": 150
+          },
+          "validation_status": "passed",
+          "deployment_status": "production",
+          "description": "PaddleOCR text detection model for English text",
+          "tags": ["production", "paddleocr", "english"]
+        }
+      }
+    },
+    "text_recognition": {
+      "current_version": "1.0.0",
+      "model_type": "paddleocr",
+      "versions": {
+        "1.0.0": {
+          "path": "models/ocr/text_recognition/v1.0.0/",
+          "model_source": "paddleocr",
+          "language": "en",
+          "created_at": "2024-01-15T09:00:00Z",
+          "accuracy": 0.89,
+          "performance_metrics": {
+            "recognition_accuracy": 0.89,
+            "processing_time_ms": 250,
+            "memory_usage_mb": 120
+          },
+          "validation_status": "passed",
+          "deployment_status": "production",
+          "description": "PaddleOCR text recognition model for English text",
+          "tags": ["production", "paddleocr", "english"]
+        }
+      }
+    }
+  },
+  "ensemble": {
+    "document_parser": {
+      "current_version": "1.0.0",
+      "versions": {
+        "1.0.0": {
+          "components": {
+            "classification": "1.0.0",
+            "mykad_extraction": "1.0.0",
+            "spk_extraction": "1.0.0",
+            "ocr_detection": "1.0.0",
+            "ocr_recognition": "1.0.0"
+          },
+          "created_at": "2024-01-15T12:00:00Z",
+          "overall_accuracy": 0.93,
+          "end_to_end_metrics": {
+            "success_rate": 0.93,
+            "average_processing_time_ms": 850,
+            "memory_usage_mb": 200
+          },
+          "validation_status": "passed",
+          "deployment_status": "production",
+          "description": "Complete document parser ensemble v1.0.0",
+          "tags": ["production", "ensemble", "complete"]
+        }
+      }
+    }
+  },
+  "deployment_history": [
+    {
+      "version": "1.0.0",
+      "deployed_at": "2024-01-15T12:30:00Z",
+      "deployed_by": "deployment_script",
+      "environment": "production",
+      "rollback_version": null,
+      "status": "active"
+    }
+  ],
+  "backup_policy": {
+    "retention_days": 90,
+    "backup_frequency": "daily",
+    "last_backup": "2024-01-15T00:00:00Z"
+  }
+}

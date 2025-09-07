@@ -1,0 +1,23 @@
+{
+  "image_name": "235504_jpg.rf.10f085ccf8f40c37620f691c9b4de781.jpg",
+  "image_path": "../IC_photos/235504_jpg.rf.10f085ccf8f40c37620f691c9b4de781.jpg",
+  "processing_time": 7.507800102233887,
+  "document_type": "Unknown",
+  "classification_confidence": 0.0,
+  "image_dimensions": {
+    "width": 4032,
+    "height": 3024
+  },
+  "extracted_fields": {
+    "name": {
+      "value": "Sin",
+      "confidence": 0.7,
+      "method": "pattern",
+      "required": false,
+      "valid": true
+    }
+  },
+  "validation_passed": true,
+  "ocr_text": ">\n\ncoe\nPe\n=\nSIN\n\nNira\n\nSONCTAN\nVEC\n\nEN\n\n| Ba\nHN Aceon\n\nEEE\n\nTY\nEE\n\naa\n\nTATTAAL\n\nSANETRA\n\nS\n\n29)\n\nY",
+  "ocr_confidence": 38.36842105263158
+}
