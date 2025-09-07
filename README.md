@@ -3,6 +3,8 @@ Drive your life, not your paperwork
 
 📄 [Presentation Slides](https://drive.google.com/drive/folders/1cqFF7POEtSZ79wl31A-WUBOUBdmzkWbW?usp=sharing)
 
+**This is a project for CodeNection hackathon 2025, Track BIJAK.**
+
 ---
 
 ## 🌟 Project Overview  
