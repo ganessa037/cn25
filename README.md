@@ -3,7 +3,6 @@ Drive your life, not your paperwork
 
 📄 [Presentation Slides](https://drive.google.com/drive/folders/1cqFF7POEtSZ79wl31A-WUBOUBdmzkWbW?usp=sharing)
 
-
 ---
 
 ## 🌟 Project Overview  
@@ -16,7 +15,6 @@ KeretaKu fixes the “car-admin chaos” faced by Malaysian drivers:
 | Missed road-tax or insurance renewals | 🔔 Smart countdown alerts via e-mail / push |
 | Scattered documents (Geran, IC, licence) | 🗂️ Encrypted vault with one-tap sharing |
 | Re-typing the same details on every form | 🧩 Chrome extension auto-fills BJAK & JPJ pages |
-
 
 ---
 
@@ -33,15 +31,16 @@ KeretaKu fixes the “car-admin chaos” faced by Malaysian drivers:
 ## 🚀 Technical Stack
 | Component | Technology |
 |-----------|------------|
-| **Frontend** | React + TypeScript, Tailwind CSS, TanStack Query |
-| **Backend** | NestJS, Prisma ORM, PostgreSQL |
-| **AI / ML** | YOLOv8 (Ultralytics) & TrOCR (.pt from Hugging Face) |
-| **Storage** | AWS S3 (docs) • Redis (queues) |
-| **Auth** | AWS Cognito + JWT |
-| **DevOps** | Docker • GitHub Actions • AWS Fargate |
+| **Frontend** | React + TypeScript, Vite, Tailwind CSS, TanStack Query |
+| **Backend** | NestJS (Express), Passport (Google OAuth), JWT, Prisma ORM, PostgreSQL |
+| **AI / ML** | FastAPI (Python), YOLOv8 (Ultralytics) & TrOCR (.pt from Hugging Face) |
+| **Storage** | PostgreSQL (local / Supabase in production) |
+| **Auth** | Google OAuth via Passport + JWT |
+| **Dev Env** | .env config, Vite for front, Node.js for server |
+| **ORM & Migrations** | Prisma Client + npx prisma migrate dev + prisma db push |
+| **Deployment** | Vercel (Frontend) • Heroku (Backend) • FastAPI service (TBD: Render / AWS / Docker) |
 
 ---
 
 ## ⚡ Quick Start
-
-Backend
+👉 [see the Project README here](./project/README.md)
