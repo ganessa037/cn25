@@ -2,15 +2,17 @@ import { Router } from 'express';
 import authRoutes from './auth.js';
 import vehicleRoutes from './vehicles.js';
 import documentRoutes from './documents.js';
-import insuranceRoutes from './insurance.js';
+import expenseRoutes from './expenses.js';
+import ml from "./ml.js";
 
 const router = Router();
 
-// Mount routes under /api (app.js already does app.use('/api', routes))
+// Mount under /api
 router.use('/auth', authRoutes);
 router.use('/vehicles', vehicleRoutes);
 router.use('/documents', documentRoutes);
-router.use('/insurance', insuranceRoutes);
+router.use('/expenses', expenseRoutes);
+router.use("/ml", ml);
 
 // API info
 router.get('/', (_req, res) => {
@@ -21,7 +23,7 @@ router.get('/', (_req, res) => {
       auth: '/api/auth',
       vehicles: '/api/vehicles',
       documents: '/api/documents',
-      insurance: '/api/insurance',
+      expenses: '/api/expenses',
     },
   });
 });

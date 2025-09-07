@@ -5,7 +5,6 @@ function normalize(error) {
   let message = error.message || 'Internal Server Error';
   let code = error.code || 'INTERNAL_ERROR';
 
-  // Common cases (extend as you need)
   switch (error.name) {
     case 'ValidationError':
     case 'SequelizeValidationError':
@@ -24,14 +23,8 @@ function normalize(error) {
   return { status, message, code };
 }
 
-export default function errorHandler(err, req, res, _next) {
-  logger.error('Error occurred', { message: err.message, stack: err.stack });
-  const status = err.statusCode || 500;
-  res.status(status).json({
-    success: false,
-    error: { message: err.message || 'Internal Server Error' }
-  });
-}
+export default function errorHandler(error, req, res, _next) {
+  logger.error('Error occurred', { message: error.message, stack: error.stack });
 
   const { status, message, code } = normalize(error);
   const isDevelopment = process.env.NODE_ENV !== 'production';
@@ -45,3 +38,4 @@ export default function errorHandler(err, req, res, _next) {
       timestamp: new Date().toISOString(),
     },
   });
+}

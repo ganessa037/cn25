@@ -1,610 +1,752 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
-import {
-  Car, Plus, Trash2, Pencil, Upload, Scan, X,
-  Shield, Wrench, BadgeCheck
-} from "lucide-react";
-import { GlassButton, GlassCard, GlassPanel } from "../../components/ui/Glass";
-import type { Vehicle } from "../../pages/Dashboard";
+import * as React from "react";
 
-export interface VehicleManagerProps {
-  vehicles: Vehicle[];
-  setVehicles: React.Dispatch<React.SetStateAction<Vehicle[]>>;
+/**
+ * - Aligned to your Prisma table "Vehicle":
+ *   brand (required), model, year, plate, color, fuelType, chassisNumber, engineNumber,
+ *   roadTaxExpiry, insuranceExpiry, lastServiceDate, nextServiceDate, currentMileage.
+ * - All API calls include Authorization: Bearer <token> (OAuth identity).
+ * - UI remains the frosted-glass look; only content/fields were aligned.
+ */
+
+/* ----------------------------- Types ----------------------------- */
+
+type Vehicle = {
+  id: string;
+  brand: string;                // NOT NULL in DB
+  model?: string | null;
+  year?: number | null;
+  plate?: string | null;
+  color?: string | null;
+  fuelType?: "Petrol" | "Diesel" | "Hybrid" | "Electric" | string | null;
+  chassisNumber?: string | null;
+  engineNumber?: string | null;
+
+  roadTaxExpiry?: string | null;     // timestamp (no tz)
+  insuranceExpiry?: string | null;
+  lastServiceDate?: string | null;
+  nextServiceDate?: string | null;
+
+  currentMileage?: number | null;
+
+  createdAt?: string;
+  updatedAt?: string;
+};
+
+/* -------------------------- API Utilities ------------------------ */
+
+function resolveApiBase(): string {
+  const raw =
+    (import.meta as any).env?.VITE_API_URL ||
+    (import.meta as any).env?.VITE_BACKEND_URL ||
+    "http://127.0.0.1:3000";
+  const trimmed = String(raw).replace(/\/$/, "");
+  return trimmed.endsWith("/api") ? trimmed : `${trimmed}/api`;
+}
+const API_BASE = resolveApiBase();
+
+function getToken(): string | null {
+  try {
+    const raw = localStorage.getItem("user");
+    if (!raw) return null;
+    return JSON.parse(raw)?.token ?? null;
+  } catch {
+    return null;
+  }
 }
 
-type FullVehicle = Vehicle & {
-  brand?: string;
-  model?: string;
-  chassisNumber?: string;
-  engineNumber?: string;
-  color?: string;
-  fuelType?: "Petrol" | "Diesel" | "Hybrid" | "EV";
-  roadTaxExpiry?: string;     // yyyy-mm-dd
-  insuranceExpiry?: string;   // yyyy-mm-dd
-  currentMileageKm?: number;
-  lastServiceDate?: string;   // yyyy-mm-dd
-  nextServiceDate?: string;   // yyyy-mm-dd
+async function api<T>(
+  method: "GET" | "POST" | "PUT" | "DELETE",
+  path: string,
+  body?: unknown
+): Promise<T> {
+  const token = getToken();
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  if (token) headers["Authorization"] = `Bearer ${token}`;
+  const res = await fetch(`${API_BASE}${path}`, {
+    method,
+    headers,
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    throw new Error(`${res.status} ${res.statusText} — ${text || "Request failed"}`);
+  }
+  return (res.status === 204 ? (null as unknown as T) : ((await res.json()) as T));
+}
+
+/* ----------------------------- Helpers --------------------------- */
+
+// UI date input (YYYY-MM-DD) -> DB "timestamp without time zone" string (no Z)
+function toDbTimestamp(localDate: string | ""): string | null {
+  if (!localDate) return null;
+  const [y, m, d] = localDate.split("-").map(Number);
+  if (!y || !m || !d) return null;
+  const dt = new Date(y, m - 1, d, 0, 0, 0);
+  // Render without trailing "Z" so Postgres stores literal local date-time
+  const yyyy = dt.getFullYear();
+  const mm = String(dt.getMonth() + 1).padStart(2, "0");
+  const dd = String(dt.getDate()).padStart(2, "0");
+  return `${yyyy}-${mm}-${dd}T00:00:00.000`;
+}
+
+const toISODate = (s?: string | null) => {
+  if (!s) return "";
+  const d = new Date(s);
+  if (isNaN(+d)) return "";
+  // normalize to local date for input value
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  return `${yyyy}-${mm}-${dd}`;
 };
 
-const BRANDS = [
-  "Perodua","Proton","Toyota","Honda","Nissan","Mazda","Mitsubishi",
-  "Hyundai","Kia","Volkswagen","BMW","Mercedes-Benz","Audi","Volvo",
-  "BYD","Geely","Ford","Lexus","Subaru"
-];
+const fmtDate = (s?: string | null) => (s ? toISODate(s) : "—");
+const fmtKm = (n?: number | null) =>
+  typeof n === "number" && !isNaN(n) ? `${n.toLocaleString()} km` : "—";
+const yearNow = new Date().getFullYear();
 
-const fmtDate = (s?: string) => {
-  if (!s) return "—";
-  const d = new Date(s);
-  if (Number.isNaN(d.getTime())) return s;
-  return d.toLocaleDateString("en-US");
-};
-const isExpired = (s?: string) => {
-  if (!s) return false;
-  const d = new Date(s);
+function statusPill(dateIso?: string | null): { label: string; tone: "ok" | "expired" } {
+  if (!dateIso) return { label: "—", tone: "ok" };
+  const d = new Date(dateIso);
+  if (isNaN(+d)) return { label: "—", tone: "ok" };
   const today = new Date();
-  // 去掉时间部分，按日期比较
-  d.setHours(0,0,0,0); today.setHours(0,0,0,0);
-  return d < today;
-};
-const km = (n?: number) =>
-  typeof n === "number" ? n.toLocaleString("en-US") : "0";
+  const a = new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+  const b = new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime();
+  return a < b ? { label: "Expired", tone: "expired" } : { label: "OK", tone: "ok" };
+}
 
-export default function VehicleManager({ vehicles, setVehicles }: VehicleManagerProps) {
-  /** 列表内临时改名（保留，兼容旧交互） */
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [newName, setNewName] = useState("");
+/* -------------------------- Main Component ----------------------- */
 
-  /** 弹窗 */
-  const [open, setOpen] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
-  const [editingVehicleId, setEditingVehicleId] = useState<string | null>(null);
-  const fileRef = useRef<HTMLInputElement>(null);
+export default function VehicleManager() {
+  const [vehicles, setVehicles] = React.useState<Vehicle[]>([]);
+  const [loading, setLoading] = React.useState(true);
+  const [error, setError] = React.useState<string | null>(null);
 
-  const currentYear = new Date().getFullYear();
-  const emptyForm: FullVehicle = {
-    id: "",
-    name: "",
+  // Filters
+  const [q, setQ] = React.useState("");
+
+  // Modal state
+  const [showAdd, setShowAdd] = React.useState(false);
+  const [showEdit, setShowEdit] = React.useState<Vehicle | null>(null);
+  const [confirmDelete, setConfirmDelete] = React.useState<Vehicle | null>(null);
+
+  // Form state (aligned to DB)
+  const [form, setForm] = React.useState<{
+    brand: string; // required
+    model: string;
+    year: number | "";
+    plate: string;
+    color: string;
+    fuelType: Vehicle["fuelType"];
+    chassisNumber: string;
+    engineNumber: string;
+
+    roadTaxExpiry: string;
+    insuranceExpiry: string;
+    lastServiceDate: string;
+    nextServiceDate: string;
+
+    currentMileage: number | "";
+  }>({
     brand: "",
     model: "",
-    year: currentYear,
+    year: "",
     plate: "",
-    chassisNumber: "",
-    engineNumber: "",
     color: "",
     fuelType: "Petrol",
+    chassisNumber: "",
+    engineNumber: "",
+
     roadTaxExpiry: "",
     insuranceExpiry: "",
-    currentMileageKm: 0,
     lastServiceDate: "",
     nextServiceDate: "",
-  };
 
-  const [form, setForm] = useState<FullVehicle>(emptyForm);
+    currentMileage: "",
+  });
 
-  /** 校验 */
-  const [touched, setTouched] = useState<Record<string, boolean>>({});
-  const [submitted, setSubmitted] = useState(false);
-  const [errors, setErrors] = useState<Record<string, string>>({});
-  const markTouched = (k: string) => setTouched((t) => ({ ...t, [k]: true }));
+  const [saving, setSaving] = React.useState(false);
+  const [formError, setFormError] = React.useState<string | null>(null);
 
-  const computedName = useMemo(() => {
-    const parts = [form.brand, form.model].filter(Boolean).join(" ");
-    return parts || form.plate || "Untitled Vehicle";
-  }, [form.brand, form.model, form.plate]);
-
-  /** 列表动作 */
-  const remove = (id: string) => setVehicles(prev => prev.filter(v => v.id !== id));
-  const startRename = (v: Vehicle) => { setEditingId(v.id); setNewName(v.name); };
-  const saveRename = () => {
-    if (!editingId) return;
-    setVehicles(prev => prev.map(v => v.id === editingId ? { ...v, name: newName || v.name } : v));
-    setEditingId(null);
-  };
-
-  /** 打开弹窗（新增/编辑） */
-  const resetForm = () => { setForm(emptyForm); setTouched({}); setSubmitted(false); setErrors({}); };
-  const openAdd = () => { setEditingVehicleId(null); resetForm(); setOpen(true); };
-  const openEdit = (v: any) => { setEditingVehicleId(v.id); setForm({ ...emptyForm, ...v }); setTouched({}); setSubmitted(false); setErrors({}); setOpen(true); };
-  const closeModal = () => { if (!submitting) setOpen(false); };
-
-  /** 锁背景滚动 & ESC */
-  useEffect(() => {
-    if (!open) return;
-    const original = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && closeModal();
-    window.addEventListener("keydown", onKey);
-    return () => {
-      document.body.style.overflow = original;
-      window.removeEventListener("keydown", onKey);
-    };
-  }, [open]);
-
-  /** 规则校验 */
-  const validate = (v: FullVehicle) => {
-    const err: Record<string, string> = {};
-    const vinOk = v.chassisNumber ? /^[A-HJ-NPR-Z0-9]{17}$/i.test(v.chassisNumber) : false;
-    const yearOk = typeof v.year === "number" && v.year >= 1980 && v.year <= currentYear + 1;
-    const plateOk = (v.plate || "").trim().length >= 3;
-    const engOk = !!(v.engineNumber && v.engineNumber.trim());
-    const brandOk = !!(v.brand && v.brand.trim());
-    const modelOk = !!(v.model && v.model.trim());
-    const colorOk = !!(v.color && v.color.trim());
-    const fuelOk = !!v.fuelType;
-    const roadOk = !!v.roadTaxExpiry;
-    const insOk = !!v.insuranceExpiry;
-    const mileOk = typeof v.currentMileageKm === "number" && v.currentMileageKm >= 0;
-    const lastOk = !!v.lastServiceDate;
-    const nextOk = !!v.nextServiceDate;
-
-    if (!brandOk) err.brand = "Required";
-    if (!modelOk) err.model = "Required";
-    if (!yearOk) err.year = "Invalid year";
-    if (!plateOk) err.plate = "Required";
-    if (!vinOk) err.chassisNumber = "VIN must be 17 characters (no I/O/Q)";
-    if (!engOk) err.engineNumber = "Required";
-    if (!colorOk) err.color = "Required";
-    if (!fuelOk) err.fuelType = "Required";
-    if (!roadOk) err.roadTaxExpiry = "Required";
-    if (!insOk) err.insuranceExpiry = "Required";
-    if (!mileOk) err.currentMileageKm = "Must be ≥ 0";
-    if (!lastOk) err.lastServiceDate = "Required";
-    if (!nextOk) err.nextServiceDate = "Required";
-
-    if (lastOk && nextOk) {
-      const last = new Date(v.lastServiceDate!);
-      const next = new Date(v.nextServiceDate!);
-      if (next < last) err.nextServiceDate = "Must be after last service date";
-    }
-    return err;
-  };
-
-  useEffect(() => { if (open) setErrors(validate(form)); }, [form, open]);
-  const isValid = useMemo(() => Object.keys(validate(form)).length === 0, [form]);
-
-  /** 提交（新增/编辑） */
-  const saveVehicle = async () => {
-    setSubmitted(true);
-    const errNow = validate(form);
-    setErrors(errNow);
-    if (Object.keys(errNow).length > 0) {
-      const firstKey = Object.keys(errNow)[0];
-      const el = document.getElementById(`field-${firstKey}`);
-      if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
-      return;
-    }
-
-    setSubmitting(true);
+  const refetch = React.useCallback(async () => {
+    setLoading(true);
+    setError(null);
     try {
-      const payload: FullVehicle = {
-        ...form,
-        id: editingVehicleId ?? crypto.randomUUID(),
-        name: [form.brand, form.model, form.year ? `(${form.year})` : ""].filter(Boolean).join(" ") || computedName,
-      };
-
-      setVehicles(prev => {
-        if (editingVehicleId) {
-          // 更新
-          return prev.map(v => v.id === editingVehicleId ? { ...(payload as any) } : v);
-        }
-        // 新增
-        return [{ ...(payload as any) }, ...prev];
-      });
-
-      closeModal();
-      resetForm();
-      setEditingVehicleId(null);
+      const v = await api<Vehicle[]>("GET", "/vehicles");
+      setVehicles(v || []);
+    } catch (err: any) {
+      setError(err?.message || "Failed to load vehicles");
     } finally {
-      setSubmitting(false);
+      setLoading(false);
     }
-  };
+  }, []);
 
-  /** Scan Document 占位 */
-  const onScan = () => fileRef.current?.click();
-  const onPickFiles: React.ChangeEventHandler<HTMLInputElement> = (e) => {
-    const files = Array.from(e.target.files || []);
-    if (!files.length) return;
-    console.log("Scanned files:", files.map(f => f.name));
-    e.currentTarget.value = "";
-  };
+  React.useEffect(() => {
+    refetch();
+  }, [refetch]);
 
-  /** 辅助：错误样式与提示 */
-  const errClass = (k: string) =>
-    (submitted || touched[k]) && errors[k] ? " ring-2 ring-red-400 border-red-400" : "";
-  const help = (k: string) =>
-    (submitted || touched[k]) && errors[k] ? (
-      <div className="mt-1 text-sm text-red-400">{errors[k]}</div>
-    ) : null;
+  /* --------------------------- Derived data --------------------------- */
 
-  /** —— UI —— */
-  return (
-    <section className="space-y-4">
-      {/* 顶部动作 */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h3 className="text-lg font-semibold">Vehicle Management</h3>
-          <p className="text-white/60">Manage your fleet with Malaysian regulatory compliance</p>
+  const filtered = React.useMemo(() => {
+    const qlc = q.trim().toLowerCase();
+    return vehicles
+      .filter((x) => {
+        if (!qlc) return true;
+        const s = `${x.brand ?? ""} ${x.model ?? ""} ${x.plate ?? ""} ${x.year ?? ""}`.toLowerCase();
+        return s.includes(qlc);
+      })
+      .sort((a, b) => {
+        const ad = new Date(a.createdAt || 0).getTime();
+        const bd = new Date(b.createdAt || 0).getTime();
+        return bd - ad;
+      });
+  }, [vehicles, q]);
+
+  /* ------------------------------ Actions ----------------------------- */
+
+  function openAdd() {
+    setForm({
+      brand: "",
+      model: "",
+      year: "",
+      plate: "",
+      color: "",
+      fuelType: "Petrol",
+      chassisNumber: "",
+      engineNumber: "",
+
+      roadTaxExpiry: "",
+      insuranceExpiry: "",
+      lastServiceDate: "",
+      nextServiceDate: "",
+
+      currentMileage: "",
+    });
+    setFormError(null);
+    setShowAdd(true);
+  }
+
+  function openEdit(row: Vehicle) {
+    setForm({
+      brand: row.brand || "",
+      model: row.model || "",
+      year: typeof row.year === "number" ? row.year : "",
+      plate: row.plate || "",
+      color: row.color || "",
+      fuelType: (row.fuelType as any) || "Petrol",
+      chassisNumber: row.chassisNumber || "",
+      engineNumber: row.engineNumber || "",
+
+      roadTaxExpiry: toISODate(row.roadTaxExpiry),
+      insuranceExpiry: toISODate(row.insuranceExpiry),
+      lastServiceDate: toISODate(row.lastServiceDate),
+      nextServiceDate: toISODate(row.nextServiceDate),
+
+      currentMileage: typeof row.currentMileage === "number" ? row.currentMileage : "",
+    });
+    setFormError(null);
+    setShowEdit(row);
+  }
+
+  async function submitAdd(e: React.FormEvent) {
+    e.preventDefault();
+    setSaving(true);
+    setFormError(null);
+    try {
+      const payload: Partial<Vehicle> = {
+        brand: form.brand.trim() || undefined, // DB requires brand; keep required in UI
+        model: form.model.trim() || null,
+        year: form.year === "" ? null : Number(form.year),
+        plate: form.plate.trim() || null,
+        color: form.color.trim() || null,
+        fuelType: form.fuelType || null,
+        chassisNumber: form.chassisNumber.trim() || null,
+        engineNumber: form.engineNumber.trim() || null,
+
+        roadTaxExpiry: toDbTimestamp(form.roadTaxExpiry),
+        insuranceExpiry: toDbTimestamp(form.insuranceExpiry),
+        lastServiceDate: toDbTimestamp(form.lastServiceDate),
+        nextServiceDate: toDbTimestamp(form.nextServiceDate),
+
+        currentMileage: form.currentMileage === "" ? 0 : Number(form.currentMileage),
+      };
+      await api<Vehicle>("POST", "/vehicles", payload);
+      setShowAdd(false);
+      await refetch();
+    } catch (err: any) {
+      setFormError(err?.message || "Failed to add vehicle");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function submitEdit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!showEdit) return;
+    setSaving(true);
+    setFormError(null);
+    try {
+      const payload: Partial<Vehicle> = {
+        brand: form.brand.trim() || undefined,
+        model: form.model.trim() || null,
+        year: form.year === "" ? null : Number(form.year),
+        plate: form.plate.trim() || null,
+        color: form.color.trim() || null,
+        fuelType: form.fuelType || null,
+        chassisNumber: form.chassisNumber.trim() || null,
+        engineNumber: form.engineNumber.trim() || null,
+
+        roadTaxExpiry: toDbTimestamp(form.roadTaxExpiry),
+        insuranceExpiry: toDbTimestamp(form.insuranceExpiry),
+        lastServiceDate: toDbTimestamp(form.lastServiceDate),
+        nextServiceDate: toDbTimestamp(form.nextServiceDate),
+
+        currentMileage: form.currentMileage === "" ? 0 : Number(form.currentMileage),
+      };
+      await api<Vehicle>("PUT", `/vehicles/${encodeURIComponent(showEdit.id)}`, payload);
+      setShowEdit(null);
+      await refetch();
+    } catch (err: any) {
+      setFormError(err?.message || "Failed to update vehicle");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function submitDelete() {
+    if (!confirmDelete) return;
+    try {
+      await api<void>("DELETE", `/vehicles/${encodeURIComponent(confirmDelete.id)}`);
+      setConfirmDelete(null);
+      await refetch();
+    } catch (err: any) {
+      alert(err?.message || "Failed to delete vehicle");
+    }
+  }
+
+  /* ------------------------------- UI -------------------------------- */
+
+  if (loading) {
+    return (
+      <div className="min-h-[calc(100vh-5rem)] grid place-items-center px-4 text-white bg-[radial-gradient(1200px_600px_at_50%_-200px,rgba(88,101,242,.35),rgba(2,8,23,1)_60%)]">
+        <div className="max-w-md w-full bg-white/10 border border-white/10 rounded-2xl p-6 backdrop-blur-xl shadow-xl">
+          Loading your vehicles…
         </div>
-        <div className="flex items-center gap-2">
-          <input ref={fileRef} type="file" multiple hidden onChange={onPickFiles} />
-          <GlassButton onClick={onScan} className="flex items-center gap-2">
-            <Scan className="w-4 h-4" /> Scan Document
-          </GlassButton>
-          <GlassButton onClick={openAdd} className="flex items-center gap-2">
-            <Plus className="w-4 h-4" /> Add Vehicle
-          </GlassButton>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-[calc(100vh-5rem)] px-3 sm:px-6 text-white bg-[radial-gradient(1200px_600px_at_50%_-200px,rgba(88,101,242,.35),rgba(2,8,23,1)_60%)]">
+      <div className="max-w-7xl mx-auto py-6 space-y-6">
+        {/* Header */}
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <div className="text-2xl sm:text-3xl font-semibold tracking-tight">Vehicle Management</div>
+            <div className="text-white/70 text-sm">Manage your fleet with Malaysian regulatory compliance</div>
+          </div>
+          <div className="flex items-center gap-3">
+            <button
+              className="glass-btn px-4 py-2 rounded-xl bg-white/15 hover:bg-white/20 border border-white/20 backdrop-blur-xl shadow-lg transition"
+              onClick={openAdd}
+            >
+              + Add Vehicle
+            </button>
+          </div>
+        </div>
+
+        {/* Search */}
+        <div className="bg-white/10 border border-white/10 rounded-2xl p-4 backdrop-blur-xl shadow-xl">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <input
+              className="rounded-xl bg-white/10 border border-white/20 px-3 py-2 outline-none focus:ring-2 focus:ring-indigo-400/50"
+              placeholder="Search brand, model, or plate"
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+            />
+            <div className="rounded-xl bg-white/5 border border-white/10 px-3 py-2 text-white/70">
+              Total vehicles: <span className="text-white">{filtered.length}</span>
+            </div>
+            <div className="rounded-xl bg-white/5 border border-white/10 px-3 py-2 text-white/60">
+              Tip: edit to keep compliance dates up to date.
+            </div>
+          </div>
+        </div>
+
+        {/* Cards (sample-alike) */}
+        <div className="space-y-4">
+          {filtered.length === 0 ? (
+            <div className="bg-white/10 border border-white/10 rounded-2xl p-6 backdrop-blur-xl shadow-xl text-white/70">
+              No vehicles yet. Add one to get started.
+            </div>
+          ) : (
+            filtered.map((v) => {
+              const road = statusPill(v.roadTaxExpiry);
+              const ins = statusPill(v.insuranceExpiry);
+              const svc = statusPill(v.nextServiceDate);
+              return (
+                <div key={v.id} className="bg-white/10 border border-white/10 rounded-2xl p-5 backdrop-blur-xl shadow-xl">
+                  {/* Title row */}
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <div className="text-lg font-semibold">
+                        {`${v.brand ?? "Vehicle"} ${v.model ?? ""}`.trim() || "Vehicle"}{" "}
+                        {v.year ? `(${v.year})` : ""}
+                      </div>
+                      <div className="text-white/70 text-sm">
+                        {v.plate ? `${v.plate} • ` : ""}
+                        {v.color ? `${v.color} • ` : ""}
+                        {v.fuelType ?? "—"}
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <button
+                        className="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/15 border border-white/20"
+                        onClick={() => openEdit(v)}
+                        title="Edit"
+                        aria-label="Edit vehicle"
+                      >
+                        ✏️
+                      </button>
+                      <button
+                        className="px-3 py-1.5 rounded-lg bg-red-500/20 hover:bg-red-500/30 border border-red-500/40"
+                        onClick={() => setConfirmDelete(v)}
+                        title="Delete"
+                        aria-label="Delete vehicle"
+                      >
+                        🗑️
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Compliance row */}
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-4">
+                    <ComplianceCard label="Road Tax" status={road} date={fmtDate(v.roadTaxExpiry)} icon="📅" />
+                    <ComplianceCard label="Insurance" status={ins} date={fmtDate(v.insuranceExpiry)} icon="🛡️" />
+                    <ComplianceCard label="Next Service" status={svc} date={fmtDate(v.nextServiceDate)} icon="🔧" />
+                  </div>
+
+                  {/* Mileage bar */}
+                  <div className="mt-4">
+                    <div className="text-white/70 text-sm">
+                      Current Mileage:{" "}
+                      <span className="text-white font-medium">{fmtKm(v.currentMileage)}</span>
+                    </div>
+                    <div className="h-2 mt-2 rounded-full bg-white/10 overflow-hidden">
+                      <div
+                        className="h-full bg-white/40"
+                        style={{
+                          width: `${Math.min(
+                            100,
+                            Math.max(0, (Number(v.currentMileage || 0) % 100000) / 1000)
+                          )}%`,
+                        }}
+                      />
+                    </div>
+                  </div>
+                </div>
+              );
+            })
+          )}
         </div>
       </div>
 
-      {/* 列表：卡片改为“品牌 型号 (年份) + 状态三栏 + 里程” */}
-      {vehicles.length === 0 ? (
-        <GlassCard className="text-white/70">No vehicles yet</GlassCard>
-      ) : (
-        <div className="grid grid-cols-1 gap-4">
-          {vehicles.map((v: any) => {
-            const title =
-              [v.brand, v.model, v.year ? `(${v.year})` : ""].filter(Boolean).join(" ") || v.name;
-            const subtitle = [v.plate, v.color, v.fuelType].filter(Boolean).join(" • ");
+      {/* Add Modal (scrollable, 2-column like your sample) */}
+      {showAdd && (
+        <Modal onClose={() => setShowAdd(false)} title="Add New Vehicle">
+          {formError && <ErrorBanner text={formError} />}
 
-            const roadExpired = isExpired(v.roadTaxExpiry);
-            const insExpired = isExpired(v.insuranceExpiry);
-            const svcExpired = isExpired(v.nextServiceDate);
-
-            return (
-              <div key={v.id} className="glass-card glass-hover p-4">
-                <div className="flex items-start justify-between gap-4">
-                  {/* 左侧主信息 */}
-                  <div className="flex items-start gap-3 min-w-0">
-                    <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center shrink-0">
-                      <Car className="w-5 h-5 text-white" />
-                    </div>
-                    <div className="min-w-0">
-                      <div className="font-semibold text-lg truncate">{title}</div>
-                      <div className="text-white/70 truncate">{subtitle || "—"}</div>
-                    </div>
-                  </div>
-
-                  {/* 右侧动作 */}
-                  <div className="flex items-center gap-2 shrink-0">
-                    {editingId === v.id ? (
-                      <GlassButton onClick={saveRename}>Save</GlassButton>
-                    ) : (
-                      <>
-                        <button className="glass-btn p-2" onClick={()=>openEdit(v)} aria-label="Edit">
-                          <Pencil className="w-4 h-4" />
-                        </button>
-                        <button className="glass-btn p-2" onClick={()=>remove(v.id)} aria-label="Delete">
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </>
-                    )}
-                  </div>
+          <form className="space-y-6" onSubmit={submitAdd}>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Basic Information */}
+              <section>
+                <h4 className="font-medium mb-3">Basic Information</h4>
+                <div className="space-y-3">
+                  <Select
+                    label="Brand"
+                    value={form.brand}
+                    onChange={(v) => setForm((f) => ({ ...f, brand: v }))}
+                    options={BRANDS}
+                    placeholder="Select Brand"
+                    required
+                  />
+                  <Input label="Model" placeholder="e.g., Vios, Accord" value={form.model} onChange={(v) => setForm((f) => ({ ...f, model: v }))} />
+                  <Input label="Year" type="number" min="1900" max={String(yearNow + 1)} value={String(form.year ?? "")} onChange={(v) => setForm((f) => ({ ...f, year: v === "" ? "" : Number(v) }))} />
+                  <Input label="Plate Number" placeholder="e.g., WA 1234 A" value={form.plate} onChange={(v) => setForm((f) => ({ ...f, plate: v }))} />
                 </div>
+              </section>
 
-                {/* 三栏状态 */}
-                <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4">
-                  {/* Road Tax */}
-                  <div className="glass-card bg-white/5">
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center">
-                        <BadgeCheck className="w-4 h-4" />
-                      </span>
-                      <span className="font-medium">Road Tax</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      {roadExpired && (
-                        <span className="px-2 py-0.5 rounded-md text-xs bg-red-500/20 text-red-300 border border-red-400/40">
-                          Expired
-                        </span>
-                      )}
-                      <span className="text-white/70">{fmtDate(v.roadTaxExpiry)}</span>
-                    </div>
-                  </div>
-
-                  {/* Insurance */}
-                  <div className="glass-card bg-white/5">
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center">
-                        <Shield className="w-4 h-4" />
-                      </span>
-                      <span className="font-medium">Insurance</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      {insExpired && (
-                        <span className="px-2 py-0.5 rounded-md text-xs bg-red-500/20 text-red-300 border border-red-400/40">
-                          Expired
-                        </span>
-                      )}
-                      <span className="text-white/70">{fmtDate(v.insuranceExpiry)}</span>
-                    </div>
-                  </div>
-
-                  {/* Next Service */}
-                  <div className="glass-card bg-white/5">
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center">
-                        <Wrench className="w-4 h-4" />
-                      </span>
-                      <span className="font-medium">Next Service</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      {svcExpired && (
-                        <span className="px-2 py-0.5 rounded-md text-xs bg-red-500/20 text-red-300 border border-red-400/40">
-                          Expired
-                        </span>
-                      )}
-                      <span className="text-white/70">{fmtDate(v.nextServiceDate)}</span>
-                    </div>
-                  </div>
+              {/* Technical Details */}
+              <section>
+                <h4 className="font-medium mb-3">Technical Details</h4>
+                <div className="space-y-3">
+                  <Input label="Chassis Number" placeholder="17-digit chassis number" value={form.chassisNumber} onChange={(v) => setForm((f) => ({ ...f, chassisNumber: v }))} />
+                  <Input label="Engine Number" placeholder="Engine identification number" value={form.engineNumber} onChange={(v) => setForm((f) => ({ ...f, engineNumber: v }))} />
+                  <Input label="Color" placeholder="e.g., Silver, White, Black" value={form.color} onChange={(v) => setForm((f) => ({ ...f, color: v }))} />
+                  <Select label="Fuel Type" value={String(form.fuelType || "")} onChange={(v) => setForm((f) => ({ ...f, fuelType: v as Vehicle["fuelType"] }))} options={["Petrol", "Diesel", "Hybrid", "Electric"]} />
                 </div>
+              </section>
+            </div>
 
-                {/* 里程条 */}
-                <div className="mt-4 rounded-xl bg-white/5 px-3 py-2 text-white/80">
-                  Current Mileage: <span className="font-semibold">{km(v.currentMileageKm)} km</span>
-                </div>
+            {/* Compliance & Maintenance */}
+            <section>
+              <h4 className="font-medium mb-3">Compliance & Maintenance</h4>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <Input label="Road Tax Expiry" type="date" value={form.roadTaxExpiry} onChange={(v) => setForm((f) => ({ ...f, roadTaxExpiry: v }))} />
+                <Input label="Insurance Expiry" type="date" value={form.insuranceExpiry} onChange={(v) => setForm((f) => ({ ...f, insuranceExpiry: v }))} />
+                <Input label="Current Mileage (km)" type="number" min="0" value={String(form.currentMileage)} onChange={(v) => setForm((f) => ({ ...f, currentMileage: v === "" ? "" : Number(v) }))} />
               </div>
-            );
-          })}
-        </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                <Input label="Last Service Date" type="date" value={form.lastServiceDate} onChange={(v) => setForm((f) => ({ ...f, lastServiceDate: v }))} />
+                <Input label="Next Service Date" type="date" value={form.nextServiceDate} onChange={(v) => setForm((f) => ({ ...f, nextServiceDate: v }))} />
+              </div>
+            </section>
+
+            <ModalActions onCancel={() => setShowAdd(false)} submitText={saving ? "Adding…" : "Add Vehicle"} />
+          </form>
+        </Modal>
       )}
 
-      {/* ===== 可滚动弹窗（新增/编辑 + 校验） ===== */}
-      {open && (
-        <div className="fixed inset-0 z-50 overflow-y-auto overscroll-contain">
-          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm" onClick={closeModal} />
-          <div className="relative min-h-full flex items-start justify-center py-10">
-            <div className="w-[min(1100px,92vw)]" role="dialog" aria-modal="true">
-              <GlassPanel className="relative">
-                <button
-                  onClick={closeModal}
-                  className="absolute right-4 top-4 p-2 rounded-lg hover:bg-white/10"
-                  aria-label="Close"
-                >
-                  <X className="w-4 h-4" />
-                </button>
+      {/* Edit Modal */}
+      {showEdit && (
+        <Modal onClose={() => setShowEdit(null)} title="Edit Vehicle">
+          {formError && <ErrorBanner text={formError} />}
 
-                <div className="mb-6">
-                  <h4 className="text-xl font-semibold">Vehicle Management</h4>
-                  <p className="text-white/60">Manage your fleet with Malaysian regulatory compliance</p>
+          <form className="space-y-6" onSubmit={submitEdit}>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <section>
+                <h4 className="font-medium mb-3">Basic Information</h4>
+                <div className="space-y-3">
+                  <Select label="Brand" value={form.brand} onChange={(v) => setForm((f) => ({ ...f, brand: v }))} options={BRANDS} placeholder="Select Brand" required />
+                  <Input label="Model" placeholder="e.g., Vios, Accord" value={form.model} onChange={(v) => setForm((f) => ({ ...f, model: v }))} />
+                  <Input label="Year" type="number" min="1900" max={String(yearNow + 1)} value={String(form.year ?? "")} onChange={(v) => setForm((f) => ({ ...f, year: v === "" ? "" : Number(v) }))} />
+                  <Input label="Plate Number" placeholder="e.g., WA 1234 A" value={form.plate} onChange={(v) => setForm((f) => ({ ...f, plate: v }))} />
                 </div>
+              </section>
 
-                <div className="flex items-center justify-end gap-2 mb-4">
-                  <GlassButton onClick={onScan} className="flex items-center gap-2">
-                    <Upload className="w-4 h-4" /> Scan Document
-                  </GlassButton>
+              <section>
+                <h4 className="font-medium mb-3">Technical Details</h4>
+                <div className="space-y-3">
+                  <Input label="Chassis Number" placeholder="17-digit chassis number" value={form.chassisNumber} onChange={(v) => setForm((f) => ({ ...f, chassisNumber: v }))} />
+                  <Input label="Engine Number" placeholder="Engine identification number" value={form.engineNumber} onChange={(v) => setForm((f) => ({ ...f, engineNumber: v }))} />
+                  <Input label="Color" placeholder="e.g., Silver, White, Black" value={form.color} onChange={(v) => setForm((f) => ({ ...f, color: v }))} />
+                  <Select label="Fuel Type" value={String(form.fuelType || "")} onChange={(v) => setForm((f) => ({ ...f, fuelType: v as Vehicle["fuelType"] }))} options={["Petrol", "Diesel", "Hybrid", "Electric"]} />
                 </div>
+              </section>
+            </div>
 
-                <div className="glass-card mb-4">
-                  <h5 className="text-lg font-semibold mb-4">
-                    {editingVehicleId ? "Edit Vehicle" : "Add New Vehicle"}
-                  </h5>
+            <section>
+              <h4 className="font-medium mb-3">Compliance & Maintenance</h4>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <Input label="Road Tax Expiry" type="date" value={form.roadTaxExpiry} onChange={(v) => setForm((f) => ({ ...f, roadTaxExpiry: v }))} />
+                <Input label="Insurance Expiry" type="date" value={form.insuranceExpiry} onChange={(v) => setForm((f) => ({ ...f, insuranceExpiry: v }))} />
+                <Input label="Current Mileage (km)" type="number" min="0" value={String(form.currentMileage)} onChange={(v) => setForm((f) => ({ ...f, currentMileage: v === "" ? "" : Number(v) }))} />
+              </div>
 
-                  {/* 表单 */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {/* Basic Information */}
-                    <div className="space-y-3">
-                      <div className="text-white/70 font-medium mb-1">Basic Information</div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                <Input label="Last Service Date" type="date" value={form.lastServiceDate} onChange={(v) => setForm((f) => ({ ...f, lastServiceDate: v }))} />
+                <Input label="Next Service Date" type="date" value={form.nextServiceDate} onChange={(v) => setForm((f) => ({ ...f, nextServiceDate: v }))} />
+              </div>
+            </section>
 
-                      <div>
-                        <label className="block text-sm text-white/70 mb-1" htmlFor="field-brand">Brand</label>
-                        <select
-                          id="field-brand"
-                          className={`glass-input w-full${(submitted || touched["brand"]) && errors["brand"] ? " ring-2 ring-red-400 border-red-400" : ""}`}
-                          value={form.brand || ""}
-                          onChange={(e)=>setForm({...form, brand: e.target.value})}
-                          onBlur={()=>setTouched(t=>({...t, brand:true}))}
-                          required
-                        >
-                          <option value="">Select Brand</option>
-                          {BRANDS.map(b => <option key={b} value={b}>{b}</option>)}
-                        </select>
-                        {(submitted || touched["brand"]) && errors["brand"] && <div className="mt-1 text-sm text-red-400">{errors["brand"]}</div>}
-                      </div>
+            <ModalActions onCancel={() => setShowEdit(null)} submitText={saving ? "Saving…" : "Save Changes"} />
+          </form>
+        </Modal>
+      )}
 
-                      <div>
-                        <label className="block text-sm text-white/70 mb-1" htmlFor="field-model">Model</label>
-                        <input
-                          id="field-model"
-                          className={`glass-input w-full${(submitted || touched["model"]) && errors["model"] ? " ring-2 ring-red-400 border-red-400" : ""}`}
-                          placeholder="e.g., Vios, Accord"
-                          value={form.model || ""}
-                          onChange={(e)=>setForm({...form, model: e.target.value})}
-                          onBlur={()=>setTouched(t=>({...t, model:true}))}
-                          required
-                        />
-                        {(submitted || touched["model"]) && errors["model"] && <div className="mt-1 text-sm text-red-400">{errors["model"]}</div>}
-                      </div>
-
-                      <div>
-                        <label className="block text-sm text-white/70 mb-1" htmlFor="field-year">Year</label>
-                        <input
-                          id="field-year"
-                          type="number"
-                          className={`glass-input w-full${(submitted || touched["year"]) && errors["year"] ? " ring-2 ring-red-400 border-red-400" : ""}`}
-                          value={form.year || ""}
-                          onChange={(e)=>setForm({...form, year: Number(e.target.value) as any})}
-                          onBlur={()=>setTouched(t=>({...t, year:true}))}
-                          required
-                        />
-                        {(submitted || touched["year"]) && errors["year"] && <div className="mt-1 text-sm text-red-400">{errors["year"]}</div>}
-                      </div>
-
-                      <div>
-                        <label className="block text-sm text-white/70 mb-1" htmlFor="field-plate">
-                          Plate Number <span className="text-white/40 text-xs">(e.g., WA 1234 A)</span>
-                        </label>
-                        <input
-                          id="field-plate"
-                          className={`glass-input w-full${(submitted || touched["plate"]) && errors["plate"] ? " ring-2 ring-red-400 border-red-400" : ""}`}
-                          placeholder="WA 1234 A"
-                          value={form.plate || ""}
-                          onChange={(e)=>setForm({...form, plate: e.target.value})}
-                          onBlur={()=>setTouched(t=>({...t, plate:true}))}
-                          required
-                        />
-                        {(submitted || touched["plate"]) && errors["plate"] && <div className="mt-1 text-sm text-red-400">{errors["plate"]}</div>}
-                      </div>
-                    </div>
-
-                    {/* Technical Details */}
-                    <div className="space-y-3">
-                      <div className="text-white/70 font-medium mb-1">Technical Details</div>
-
-                      <div>
-                        <label className="block text-sm text-white/70 mb-1" htmlFor="field-chassisNumber">Chassis Number</label>
-                        <input
-                          id="field-chassisNumber"
-                          className={`glass-input w-full${(submitted || touched["chassisNumber"]) && errors["chassisNumber"] ? " ring-2 ring-red-400 border-red-400" : ""}`}
-                          placeholder="17-digit chassis number"
-                          value={form.chassisNumber || ""}
-                          onChange={(e)=>setForm({...form, chassisNumber: e.target.value})}
-                          onBlur={()=>setTouched(t=>({...t, chassisNumber:true}))}
-                          required
-                        />
-                        {(submitted || touched["chassisNumber"]) && errors["chassisNumber"] && <div className="mt-1 text-sm text-red-400">{errors["chassisNumber"]}</div>}
-                      </div>
-
-                      <div>
-                        <label className="block text-sm text-white/70 mb-1" htmlFor="field-engineNumber">Engine Number</label>
-                        <input
-                          id="field-engineNumber"
-                          className={`glass-input w-full${(submitted || touched["engineNumber"]) && errors["engineNumber"] ? " ring-2 ring-red-400 border-red-400" : ""}`}
-                          placeholder="Engine identification number"
-                          value={form.engineNumber || ""}
-                          onChange={(e)=>setForm({...form, engineNumber: e.target.value})}
-                          onBlur={()=>setTouched(t=>({...t, engineNumber:true}))}
-                          required
-                        />
-                        {(submitted || touched["engineNumber"]) && errors["engineNumber"] && <div className="mt-1 text-sm text-red-400">{errors["engineNumber"]}</div>}
-                      </div>
-
-                      <div>
-                        <label className="block text-sm text-white/70 mb-1" htmlFor="field-color">Color</label>
-                        <input
-                          id="field-color"
-                          className={`glass-input w-full${(submitted || touched["color"]) && errors["color"] ? " ring-2 ring-red-400 border-red-400" : ""}`}
-                          placeholder="e.g., Silver, White, Black"
-                          value={form.color || ""}
-                          onChange={(e)=>setForm({...form, color: e.target.value})}
-                          onBlur={()=>setTouched(t=>({...t, color:true}))}
-                          required
-                        />
-                        {(submitted || touched["color"]) && errors["color"] && <div className="mt-1 text-sm text-red-400">{errors["color"]}</div>}
-                      </div>
-
-                      <div>
-                        <label className="block text-sm text-white/70 mb-1" htmlFor="field-fuelType">Fuel Type</label>
-                        <select
-                          id="field-fuelType"
-                          className={`glass-input w-full${(submitted || touched["fuelType"]) && errors["fuelType"] ? " ring-2 ring-red-400 border-red-400" : ""}`}
-                          value={form.fuelType || "Petrol"}
-                          onChange={(e)=>setForm({...form, fuelType: e.target.value as any})}
-                          onBlur={()=>setTouched(t=>({...t, fuelType:true}))}
-                          required
-                        >
-                          <option>Petrol</option>
-                          <option>Diesel</option>
-                          <option>Hybrid</option>
-                          <option>EV</option>
-                        </select>
-                        {(submitted || touched["fuelType"]) && errors["fuelType"] && <div className="mt-1 text-sm text-red-400">{errors["fuelType"]}</div>}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* 合规&维护 */}
-                  <div className="mt-6 space-y-3">
-                    <div className="text-white/70 font-medium">Compliance & Maintenance</div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                      <div>
-                        <label className="block text-sm text-white/70 mb-1" htmlFor="field-roadTaxExpiry">Road Tax Expiry</label>
-                        <input
-                          id="field-roadTaxExpiry"
-                          type="date"
-                          className={`glass-input w-full${(submitted || touched["roadTaxExpiry"]) && errors["roadTaxExpiry"] ? " ring-2 ring-red-400 border-red-400" : ""}`}
-                          value={form.roadTaxExpiry || ""}
-                          onChange={(e)=>setForm({...form, roadTaxExpiry: e.target.value})}
-                          onBlur={()=>setTouched(t=>({...t, roadTaxExpiry:true}))}
-                          required
-                        />
-                        {(submitted || touched["roadTaxExpiry"]) && errors["roadTaxExpiry"] && <div className="mt-1 text-sm text-red-400">{errors["roadTaxExpiry"]}</div>}
-                      </div>
-                      <div>
-                        <label className="block text-sm text-white/70 mb-1" htmlFor="field-insuranceExpiry">Insurance Expiry</label>
-                        <input
-                          id="field-insuranceExpiry"
-                          type="date"
-                          className={`glass-input w-full${(submitted || touched["insuranceExpiry"]) && errors["insuranceExpiry"] ? " ring-2 ring-red-400 border-red-400" : ""}`}
-                          value={form.insuranceExpiry || ""}
-                          onChange={(e)=>setForm({...form, insuranceExpiry: e.target.value})}
-                          onBlur={()=>setTouched(t=>({...t, insuranceExpiry:true}))}
-                          required
-                        />
-                        {(submitted || touched["insuranceExpiry"]) && errors["insuranceExpiry"] && <div className="mt-1 text-sm text-red-400">{errors["insuranceExpiry"]}</div>}
-                      </div>
-                      <div>
-                        <label className="block text-sm text-white/70 mb-1" htmlFor="field-currentMileageKm">Current Mileage (km)</label>
-                        <input
-                          id="field-currentMileageKm"
-                          type="number"
-                          className={`glass-input w-full${(submitted || touched["currentMileageKm"]) && errors["currentMileageKm"] ? " ring-2 ring-red-400 border-red-400" : ""}`}
-                          value={form.currentMileageKm ?? 0}
-                          onChange={(e)=>setForm({...form, currentMileageKm: Number(e.target.value)})}
-                          onBlur={()=>setTouched(t=>({...t, currentMileageKm:true}))}
-                          required
-                          min={0}
-                        />
-                        {(submitted || touched["currentMileageKm"]) && errors["currentMileageKm"] && <div className="mt-1 text-sm text-red-400">{errors["currentMileageKm"]}</div>}
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                      <div>
-                        <label className="block text-sm text-white/70 mb-1" htmlFor="field-lastServiceDate">Last Service Date</label>
-                        <input
-                          id="field-lastServiceDate"
-                          type="date"
-                          className={`glass-input w-full${(submitted || touched["lastServiceDate"]) && errors["lastServiceDate"] ? " ring-2 ring-red-400 border-red-400" : ""}`}
-                          value={form.lastServiceDate || ""}
-                          onChange={(e)=>setForm({...form, lastServiceDate: e.target.value})}
-                          onBlur={()=>setTouched(t=>({...t, lastServiceDate:true}))}
-                          required
-                        />
-                        {(submitted || touched["lastServiceDate"]) && errors["lastServiceDate"] && <div className="mt-1 text-sm text-red-400">{errors["lastServiceDate"]}</div>}
-                      </div>
-                      <div>
-                        <label className="block text-sm text-white/70 mb-1" htmlFor="field-nextServiceDate">Next Service Date</label>
-                        <input
-                          id="field-nextServiceDate"
-                          type="date"
-                          className={`glass-input w-full${(submitted || touched["nextServiceDate"]) && errors["nextServiceDate"] ? " ring-2 ring-red-400 border-red-400" : ""}`}
-                          value={form.nextServiceDate || ""}
-                          onChange={(e)=>setForm({...form, nextServiceDate: e.target.value})}
-                          onBlur={()=>setTouched(t=>({...t, nextServiceDate:true}))}
-                          required
-                        />
-                        {(submitted || touched["nextServiceDate"]) && errors["nextServiceDate"] && <div className="mt-1 text-sm text-red-400">{errors["nextServiceDate"]}</div>}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* footer */}
-                  <div className="mt-6 flex items-center justify-end gap-3">
-                    <GlassButton onClick={closeModal} className="px-5">Cancel</GlassButton>
-                    <GlassButton
-                      onClick={saveVehicle}
-                      className={`px-5 ${(!isValid || submitting) ? "opacity-60 cursor-not-allowed" : ""}`}
-                      aria-disabled={!isValid || submitting}
-                    >
-                      {submitting ? "Saving…" : (editingVehicleId ? "✓ Save Changes" : "✓ Add Vehicle")}
-                    </GlassButton>
-                  </div>
-                </div>
-              </GlassPanel>
+      {/* Delete Confirmation */}
+      {confirmDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setConfirmDelete(null)} />
+          <div className="relative z-10 w-full max-w-md bg-white/10 border border-white/15 rounded-2xl shadow-2xl backdrop-blur-xl p-6">
+            <div className="text-xl font-semibold">Delete Vehicle</div>
+            <div className="text-white/70 text-sm mt-1">
+              Are you sure you want to delete{" "}
+              <span className="font-medium">
+                {confirmDelete.plate || `${confirmDelete.brand ?? ""} ${confirmDelete.model ?? ""}`.trim() || "this vehicle"}
+              </span>
+              ?
+            </div>
+            <div className="flex items-center justify-end gap-3 mt-6">
+              <button className="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/15 border border-white/20" onClick={() => setConfirmDelete(null)}>
+                Cancel
+              </button>
+              <button className="px-4 py-2 rounded-xl bg-red-500/20 hover:bg-red-500/30 border border-red-500/40" onClick={submitDelete}>
+                Delete
+              </button>
             </div>
           </div>
         </div>
       )}
-    </section>
+    </div>
   );
 }
+
+/* ---------------------------- UI Primitives --------------------------- */
+
+function Modal({
+  title,
+  children,
+  onClose,
+}: {
+  title: string;
+  children: React.ReactNode;
+  onClose: () => void;
+}) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center">
+      {/* overlay */}
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
+      {/* modal */}
+      <div className="relative z-10 w-full max-w-4xl bg-white/10 border border-white/15 rounded-2xl shadow-2xl backdrop-blur-xl p-6 max-h-[80vh] overflow-y-auto">
+        <div className="text-xl font-semibold">{title}</div>
+        <div className="text-white/70 text-sm mb-4">Saved to your account via OAuth identity</div>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+function ModalActions({
+  onCancel,
+  submitText,
+}: {
+  onCancel: () => void;
+  submitText: string;
+}) {
+  return (
+    <div className="flex items-center justify-end gap-3 pt-2">
+      <button type="button" onClick={onCancel} className="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/15 border border-white/20 transition">
+        Cancel
+      </button>
+      <button type="submit" className="px-4 py-2 rounded-xl bg-white/20 hover:bg-white/25 border border-white/30 backdrop-blur-xl shadow-lg transition">
+        {submitText}
+      </button>
+    </div>
+  );
+}
+
+function Input({
+  label,
+  value,
+  onChange,
+  placeholder,
+  type = "text",
+  required,
+  step,
+  min,
+  max,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  placeholder?: string;
+  type?: string;
+  required?: boolean;
+  step?: string;
+  min?: string | number;
+  max?: string | number;
+}) {
+  return (
+    <div>
+      <label className="block text-sm text-white/80 mb-1">{label}</label>
+      <input
+        className="w-full rounded-xl bg-white/10 border border-white/20 px-3 py-2 outline-none focus:ring-2 focus:ring-indigo-400/50"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        type={type}
+        required={required}
+        step={step}
+        min={min}
+        max={max}
+      />
+    </div>
+  );
+}
+
+function Select({
+  label,
+  value,
+  onChange,
+  options,
+  placeholder,
+  required,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  options: string[];
+  placeholder?: string;
+  required?: boolean;
+}) {
+  return (
+    <div>
+      <label className="block text-sm text-white/80 mb-1">{label}</label>
+      <select
+        className="w-full rounded-xl bg-white/10 border border-white/20 px-3 py-2 outline-none focus:ring-2 focus:ring-indigo-400/50"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        required={required}
+      >
+        {placeholder && <option value="">{placeholder}</option>}
+        {options.map((opt) => (
+          <option key={opt} value={opt}>
+            {opt}
+          </option>
+        ))}
+      </select>
+    </div>
+  );
+}
+
+function ErrorBanner({ text }: { text: string }) {
+  return (
+    <div className="mb-3 text-sm text-red-300 bg-red-900/30 border border-red-500/30 rounded-lg p-2">
+      {text}
+    </div>
+  );
+}
+
+function ComplianceCard({
+  label,
+  status,
+  date,
+  icon,
+}: {
+  label: string;
+  status: { label: string; tone: "ok" | "expired" };
+  date: string;
+  icon: string;
+}) {
+  return (
+    <div className="bg-white/10 border border-white/10 rounded-xl p-4">
+      <div className="flex items-center gap-2">
+        <span className="text-lg">{icon}</span>
+        <div className="font-medium">{label}</div>
+      </div>
+      <div className="mt-2 flex items-center gap-2">
+        <span
+          className={
+            "text-xs px-2 py-0.5 rounded-full border " +
+            (status.tone === "expired"
+              ? "bg-red-500/20 border-red-500/40 text-red-200"
+              : "bg-emerald-500/20 border-emerald-500/40 text-emerald-100")
+          }
+        >
+          {status.label}
+        </span>
+        <span className="text-sm text-white/70">{date}</span>
+      </div>
+    </div>
+  );
+}
+
+/* ------------------------------ Constants ---------------------------- */
+
+const BRANDS = [
+  "Toyota","Honda","Perodua","Proton","Nissan","Mazda","BMW","Mercedes-Benz","Audi","Volkswagen",
+  "Hyundai","Kia","Volvo","Mitsubishi","Subaru",
+];

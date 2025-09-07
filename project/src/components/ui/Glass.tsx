@@ -1,19 +1,48 @@
 import React from "react";
-import clsx from "clsx";
 
-export const GlassCard: React.FC<React.HTMLAttributes<HTMLDivElement>> = ({ className, ...props }) => (
-  <div className={clsx("glass-card", className)} {...props} />
-);
+type BoxProps = React.HTMLAttributes<HTMLDivElement>;
+type BtnProps = React.ButtonHTMLAttributes<HTMLButtonElement>;
 
-export const GlassPanel: React.FC<React.HTMLAttributes<HTMLDivElement>> = ({ className, ...props }) => (
-  <div className={clsx("glass-panel", className)} {...props} />
-);
+// Page wrapper (optional utility for large sections)
+export function GlassPage({ className = "", ...rest }: BoxProps) {
+  return (
+    <div className={`min-h-[calc(100vh-4rem)] ${className}`} {...rest} />
+  );
+}
 
-export const GlassButton: React.FC<React.ButtonHTMLAttributes<HTMLButtonElement>> = ({ className, ...props }) => (
-  <button className={clsx("glass-btn", className)} {...props} />
-);
+// Section title helper
+export function SectionTitle({ className = "", ...rest }: BoxProps) {
+  return (
+    <h2
+      className={`text-xl font-semibold tracking-wide ${className}`}
+      {...rest}
+    />
+  );
+}
 
-export const GlassInput = React.forwardRef<HTMLInputElement, React.InputHTMLAttributes<HTMLInputElement>>(
-  ({ className, ...props }, ref) => <input ref={ref} className={clsx("glass-input", className)} {...props} />
-);
-GlassInput.displayName = "GlassInput";
+// Simple responsive grid helper
+export function GlassGrid({ className = "", ...rest }: BoxProps) {
+  return (
+    <div
+      className={`grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 ${className}`}
+      {...rest}
+    />
+  );
+}
+
+// Single, canonical GlassCard export
+export function GlassCard({ className = "", ...rest }: BoxProps) {
+  return <div className={`glass-card ${className}`} {...rest} />;
+}
+
+// Single, canonical GlassPanel export
+export function GlassPanel({ className = "", ...rest }: BoxProps) {
+  return <div className={`glass-panel ${className}`} {...rest} />;
+}
+
+// Single, canonical GlassButton export
+export function GlassButton({ className = "", ...rest }: BtnProps) {
+  return (
+    <button className={`glass-btn inline-flex items-center justify-center ${className}`} {...rest} />
+  );
+}

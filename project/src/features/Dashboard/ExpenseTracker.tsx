@@ -1,551 +1,731 @@
-import React, { useMemo, useRef, useState } from "react";
-import {
-  Plus, Pencil, Trash2, Search, Car, Wrench, Droplet, Shield, ReceiptText,
-  BadgeDollarSign, Store, X, Upload
-} from "lucide-react";
-import { GlassButton, GlassCard, GlassPanel } from "../../components/ui/Glass";
-import type { Vehicle } from "../../pages/Dashboard";
+import * as React from "react";
 
-/** ===== Types ===== */
-export type ExpenseCategory =
-  | "Fuel"
-  | "Maintenance"
-  | "Insurance"
-  | "Road Tax"
-  | "Toll/Parking"
-  | "Other";
+/**
+ * Expense Tracker
+ * - CRUD via /api/expenses
+ * - Reads Authorization token from localStorage.user.token
+ * - Glass UI, modal forms (scrollable), responsive table
+ * - Aligns with Prisma schema:
+ *   enum ExpenseCategory { Fuel, Maintenance, Insurance, RoadTax, Toll_Parking, Other }
+ *   model Expense { id, userId, vehicleId (required), title, category, amount, date, ... }
+ */
 
-export type Expense = {
-  id: string;
-  vehicleId: string;
-  title: string;            // e.g. "Shell Station, Damansara"
-  category: ExpenseCategory;
-  amount: number;           // RM
-  date: string;             // YYYY-MM-DD
-  description?: string;
-  receiptBase64?: string;   // optional uploaded receipt
-};
+/* ----------------------- Category mapping (UI <-> DB) ---------------------- */
 
-export interface ExpenseTrackerProps {
-  expenses: Expense[];
-  setExpenses: React.Dispatch<React.SetStateAction<Expense[]>>;
-  vehicles: Vehicle[];
-}
-
-/** ===== Helpers ===== */
-const CATEGORIES: ExpenseCategory[] = [
+const CATEGORY_OPTIONS_UI = [
   "Fuel",
   "Maintenance",
   "Insurance",
   "Road Tax",
   "Toll/Parking",
   "Other",
-];
+] as const;
 
-const rm = (n: number) =>
-  `RM${n.toLocaleString("en-MY", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+type CategoryUI = typeof CATEGORY_OPTIONS_UI[number];
+type CategoryDB =
+  | "Fuel"
+  | "Maintenance"
+  | "Insurance"
+  | "RoadTax"
+  | "Toll_Parking"
+  | "Other";
 
-const fmtDate = (s?: string) => {
-  if (!s) return "—";
-  const d = new Date(s);
-  return Number.isNaN(d.getTime()) ? s : d.toLocaleDateString("en-US");
+const CATEGORY_UI_TO_DB: Record<CategoryUI | string, CategoryDB> = {
+  Fuel: "Fuel",
+  Maintenance: "Maintenance",
+  Insurance: "Insurance",
+  "Road Tax": "RoadTax",
+  "Toll/Parking": "Toll_Parking",
+  Other: "Other",
+
+  // tolerate old labels
+  Service: "Maintenance",
+  Tax: "RoadTax",
+  Toll: "Toll_Parking",
+  Parts: "Maintenance",
+  General: "Other",
 };
 
-const IconByCategory: React.FC<{ cat: ExpenseCategory }> = ({ cat }) => {
-  const base = "w-10 h-10 rounded-xl flex items-center justify-center";
-  switch (cat) {
-    case "Fuel":
-      return <div className={`${base} bg-emerald-400/15`}><Droplet className="w-5 h-5 text-emerald-300" /></div>;
-    case "Maintenance":
-      return <div className={`${base} bg-indigo-400/15`}><Wrench className="w-5 h-5 text-indigo-300" /></div>;
-    case "Insurance":
-      return <div className={`${base} bg-rose-400/15`}><Shield className="w-5 h-5 text-rose-300" /></div>;
-    case "Road Tax":
-      return <div className={`${base} bg-amber-400/15`}><ReceiptText className="w-5 h-5 text-amber-300" /></div>;
-    case "Toll/Parking":
-      return <div className={`${base} bg-teal-400/15`}><BadgeDollarSign className="w-5 h-5 text-teal-300" /></div>;
-    default:
-      return <div className={`${base} bg-slate-400/15`}><Store className="w-5 h-5 text-slate-300" /></div>;
+const CATEGORY_DB_TO_UI: Record<CategoryDB, CategoryUI> = {
+  Fuel: "Fuel",
+  Maintenance: "Maintenance",
+  Insurance: "Insurance",
+  RoadTax: "Road Tax",
+  Toll_Parking: "Toll/Parking",
+  Other: "Other",
+};
+
+/* --------------------------------- Types ---------------------------------- */
+
+type Expense = {
+  id: string;
+  title: string;
+  amount: number;
+  category: CategoryDB; // stored as DB token
+  date: string; // ISO
+  vehicleId: string;
+  createdAt?: string;
+  updatedAt?: string;
+};
+
+type Vehicle = {
+  id: string;
+  brand?: string | null; // Prisma uses 'brand'
+  model?: string | null;
+  plate?: string | null; // Prisma uses 'plate'
+  year?: number | null;
+};
+
+/* --------------------------- API utilities -------------------------------- */
+
+function apiBase(): string {
+  const raw =
+    (import.meta as any).env?.VITE_API_URL ||
+    (import.meta as any).env?.VITE_BACKEND_URL ||
+    "http://127.0.0.1:3000";
+  const t = String(raw).replace(/\/$/, "");
+  return t.endsWith("/api") ? t : `${t}/api`;
+}
+const API = apiBase();
+
+function token(): string | null {
+  try {
+    return JSON.parse(localStorage.getItem("user") || "{}")?.token ?? null;
+  } catch {
+    return null;
   }
-};
+}
 
-const vehicleLabel = (vehicles: Vehicle[], id?: string) => {
-  if (!id) return undefined;
-  const v = vehicles.find((x: any) => x.id === id) as any;
-  if (!v) return undefined;
-  const title = [v.brand, v.model].filter(Boolean).join(" ");
-  const plate = v.plate ? `(${v.plate})` : "";
-  return title ? `${title} ${plate}`.trim() : v.name || v.plate || id;
-};
-
-const fileToBase64 = (file: File) =>
-  new Promise<string>((res, rej) => {
-    const r = new FileReader();
-    r.onload = () => res(String(r.result));
-    r.onerror = () => rej(r.error);
-    r.readAsDataURL(file);
+async function api<T>(
+  method: "GET" | "POST" | "PUT" | "DELETE",
+  path: string,
+  body?: unknown
+): Promise<T> {
+  const res = await fetch(`${API}${path}`, {
+    method,
+    headers: {
+      "Content-Type": "application/json",
+      ...(token() ? { Authorization: `Bearer ${token()}` } : {}),
+    },
+    body: body ? JSON.stringify(body) : undefined,
   });
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    throw new Error(`${res.status} ${res.statusText}${text ? ` — ${text}` : ""}`);
+  }
+  return (await res.json()) as T;
+}
 
-/** ===== Component ===== */
-export default function ExpenseTracker({ expenses, setExpenses, vehicles }: ExpenseTrackerProps) {
-  /** KPIs */
-  const now = new Date();
-  const year = now.getFullYear();
-  const month = now.getMonth(); // 0-11
+/* ------------------------------ Helpers ----------------------------------- */
 
-  const { total, thisMonth, count, avgPerMonth } = useMemo(() => {
-    const total = expenses.reduce((s, e) => s + (e.amount || 0), 0);
-    const thisMonth = expenses.reduce((s, e) => {
-      const d = new Date(e.date);
-      return d.getFullYear() === year && d.getMonth() === month ? s + (e.amount || 0) : s;
-    }, 0);
-    const count = expenses.length;
+const fmtMY = new Intl.NumberFormat("en-MY", {
+  style: "currency",
+  currency: "MYR",
+});
 
-    // Avg per month over active months between min and max date (inclusive)
-    if (count === 0) return { total, thisMonth, count, avgPerMonth: 0 };
-    const timestamps = expenses.map((e) => new Date(e.date).getTime()).filter((n) => !Number.isNaN(n));
-    const minT = Math.min(...timestamps);
-    const maxT = Math.max(...timestamps);
-    const minD = new Date(minT);
-    const maxD = new Date(maxT);
-    const months =
-      (maxD.getFullYear() - minD.getFullYear()) * 12 + (maxD.getMonth() - minD.getMonth()) + 1;
-    const avgPerMonth = months > 0 ? total / months : total;
-    return { total, thisMonth, count, avgPerMonth };
-  }, [expenses, month, year]);
+const toISOyyyyMMdd = (d: Date | string) => {
+  const base = typeof d === "string" ? new Date(d) : d;
+  // keep the date as local date (no TZ shift)
+  const local = new Date(base.getTime() - base.getTimezoneOffset() * 60000);
+  return local.toISOString().slice(0, 10);
+};
+Select
+/** Accepts 'yyyy-mm-dd' or 'dd.mm.yyyy' and returns a full ISO string */
+function toApiDate(input: string | undefined | null) {
+  if (!input) return new Date().toISOString();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(input)) return new Date(`${input}T00:00:00`).toISOString();
+  const m = input.match(/^(\d{2})\.(\d{2})\.(\d{4})$/);
+  if (m) {
+    const [, dd, mm, yyyy] = m;
+    return new Date(`${yyyy}-${mm}-${dd}T00:00:00`).toISOString();
+  }
+  // try native parsing as last resort
+  return new Date(input).toISOString();
+}
 
-  /** Filters & sorting */
-  const [q, setQ] = useState("");
-  const [catFilter, setCatFilter] = useState<ExpenseCategory | "All">("All");
-  const [vehFilter, setVehFilter] = useState<string>("all");
-  const [sortKey, setSortKey] = useState<"date_desc" | "date_asc" | "amount_desc" | "amount_asc">(
-    "date_desc"
-  );
+function vehicleLabel(v?: Vehicle) {
+  if (!v) return "—";
+  return v.plate?.trim() || `${v.brand ?? ""} ${v.model ?? ""}`.trim() || v.id.slice(0, 6);
+}
 
-  const filtered = useMemo(() => {
-    let list = expenses.filter((e) => {
-      if (catFilter !== "All" && e.category !== catFilter) return false;
-      if (vehFilter !== "all" && e.vehicleId !== vehFilter) return false;
-      if (q) {
-        const hay = `${e.title} ${e.description || ""}`.toLowerCase();
-        if (!hay.includes(q.toLowerCase())) return false;
-      }
-      return true;
-    });
-    list = list.sort((a, b) => {
-      if (sortKey === "date_desc") return new Date(b.date).getTime() - new Date(a.date).getTime();
-      if (sortKey === "date_asc") return new Date(a.date).getTime() - new Date(b.date).getTime();
-      if (sortKey === "amount_desc") return (b.amount || 0) - (a.amount || 0);
-      return (a.amount || 0) - (b.amount || 0);
-    });
-    return list;
-  }, [expenses, q, catFilter, vehFilter, sortKey]);
+/* --------------------------- Component ------------------------------------ */
 
-  /** Modal state */
-  const [open, setOpen] = useState(false);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [submitting, setSubmitting] = useState(false);
-  const fileRef = useRef<HTMLInputElement>(null);
+export default function ExpenseTracker() {
+  const [expenses, setExpenses] = React.useState<Expense[]>([]);
+  const [vehicles, setVehicles] = React.useState<Vehicle[]>([]);
+  const [loading, setLoading] = React.useState(true);
+  const [error, setError] = React.useState<string | null>(null);
 
-  type Form = {
-    vehicleId: string;
-    category: ExpenseCategory | "";
+  // filters
+  const [q, setQ] = React.useState("");
+  const [category, setCategory] = React.useState<"All" | CategoryUI>("All");
+  const [vehicleId, setVehicleId] = React.useState<string>("");
+  const [from, setFrom] = React.useState<string>("");
+  const [to, setTo] = React.useState<string>("");
+
+  // modals
+  const [showAdd, setShowAdd] = React.useState(false);
+  const [showEdit, setShowEdit] = React.useState<Expense | null>(null);
+  const [confirmDelete, setConfirmDelete] = React.useState<Expense | null>(null);
+
+  // form
+  const [form, setForm] = React.useState<{
     title: string;
-    amount: string;     // string for input; we cast on submit
-    date: string;       // YYYY-MM-DD
-    description: string;
-    receipt?: File | null;
-  };
-
-  const emptyForm: Form = {
-    vehicleId: "",
-    category: "",
+    amount: number | "";
+    category: CategoryUI;
+    date: string; // yyyy-mm-dd
+    vehicleId: string;
+    description?: string;
+  }>({
     title: "",
     amount: "",
-    date: "",
-    description: "",
-    receipt: null,
-  };
-
-  const [form, setForm] = useState<Form>(emptyForm);
-  const [touched, setTouched] = useState<Record<keyof Form, boolean>>({
-    vehicleId: false,
-    category: false,
-    title: false,
-    amount: false,
-    date: false,
-    description: false,
-    receipt: false,
+    category: "Other",
+    date: toISOyyyyMMdd(new Date()),
+    vehicleId: "",
   });
-  const [submitted, setSubmitted] = useState(false);
 
-  const err = useMemo(() => {
-    const errors: Partial<Record<keyof Form, string>> = {};
-    if (!form.vehicleId) errors.vehicleId = "Required";
-    if (!form.category) errors.category = "Required";
-    if (!form.title.trim()) errors.title = "Required";
-    const amt = Number(form.amount);
-    if (!(form.amount.trim() && !Number.isNaN(amt) && amt > 0)) errors.amount = "Must be > 0";
-    if (!form.date) errors.date = "Required";
-    return errors;
-  }, [form]);
+  const [saving, setSaving] = React.useState(false);
+  const [formError, setFormError] = React.useState<string | null>(null);
 
-  const isValid = Object.keys(err).length === 0;
-
-  const onOpenAdd = () => {
-    setEditingId(null);
-    setForm(emptyForm);
-    setTouched({
-      vehicleId: false, category: false, title: false, amount: false, date: false, description: false, receipt: false,
-    });
-    setSubmitted(false);
-    setOpen(true);
-  };
-
-  const onOpenEdit = (e: Expense) => {
-    setEditingId(e.id);
-    setForm({
-      vehicleId: e.vehicleId,
-      category: e.category,
-      title: e.title,
-      amount: e.amount.toString(),
-      date: e.date,
-      description: e.description || "",
-      receipt: null,
-    });
-    setTouched({
-      vehicleId: false, category: false, title: false, amount: false, date: false, description: false, receipt: false,
-    });
-    setSubmitted(false);
-    setOpen(true);
-  };
-
-  const closeModal = () => !submitting && setOpen(false);
-
-  const onPick: React.ChangeEventHandler<HTMLInputElement> = async (e) => {
-    const f = e.target.files?.[0];
-    if (!f) return;
-    if (f.size > 10 * 1024 * 1024) {
-      alert("File too large (max 10MB)");
-      e.currentTarget.value = "";
-      return;
-    }
-    setForm((p) => ({ ...p, receipt: f }));
-  };
-
-  const saveExpense = async () => {
-    setSubmitted(true);
-    if (!isValid) return;
-
-    setSubmitting(true);
+  const refetch = React.useCallback(async () => {
+    setLoading(true);
+    setError(null);
     try {
-      const base64 = form.receipt ? await fileToBase64(form.receipt) : undefined;
-      const payload: Expense = {
-        id: editingId ?? crypto.randomUUID(),
-        vehicleId: form.vehicleId,
-        category: form.category as ExpenseCategory,
-        title: form.title.trim(),
-        amount: Number(form.amount),
-        date: form.date,
-        description: form.description.trim() || undefined,
-        receiptBase64: base64,
+      const [e, v] = await Promise.all([
+        api<Expense[]>("GET", "/expenses"),
+        api<Vehicle[]>("GET", "/vehicles"),
+      ]);
+      setExpenses(e || []);
+      setVehicles(v || []);
+    } catch (err: any) {
+      setError(err?.message || "Failed to load expenses");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  React.useEffect(() => {
+    refetch();
+  }, [refetch]);
+
+  /* ------------------------ Derived / filtered list ----------------------- */
+
+  const filtered = React.useMemo(() => {
+    const qLower = q.trim().toLowerCase();
+    const fromD = from ? new Date(from) : null;
+    const toD = to ? new Date(to) : null;
+    const wantDbCat = category === "All" ? null : CATEGORY_UI_TO_DB[category];
+
+    return expenses
+      .filter((x) => {
+        const title = (x.title || "").toLowerCase();
+        const uiCat = CATEGORY_DB_TO_UI[x.category] || x.category;
+        const hay = `${title} ${uiCat}`.toLowerCase();
+        if (qLower && !hay.includes(qLower)) return false;
+
+        if (wantDbCat && x.category !== wantDbCat) return false;
+        if (vehicleId && x.vehicleId !== vehicleId) return false;
+
+        const d = new Date(x.date);
+        if (fromD && d < fromD) return false;
+        if (toD && d > toD) return false;
+        return true;
+      })
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  }, [expenses, q, category, vehicleId, from, to]);
+
+  const total = React.useMemo(
+    () => filtered.reduce((s, x) => s + Number(x.amount || 0), 0),
+    [filtered]
+  );
+
+  /* ------------------------------- Actions -------------------------------- */
+
+  function openAdd() {
+    setForm({
+      title: "",
+      amount: "",
+      category: "Other",
+      date: toISOyyyyMMdd(new Date()),
+      vehicleId: "", // force user to pick
+    });
+    setFormError(null);
+    setShowAdd(true);
+  }
+
+  function openEdit(row: Expense) {
+    setForm({
+      title: row.title || "",
+      amount: Number(row.amount ?? 0),
+      category: CATEGORY_DB_TO_UI[row.category] || "Other",
+      date: row.date ? toISOyyyyMMdd(row.date) : toISOyyyyMMdd(new Date()),
+      vehicleId: row.vehicleId || "",
+    });
+    setFormError(null);
+    setShowEdit(row);
+  }
+
+  async function submitAdd(e: React.FormEvent) {
+    e.preventDefault();
+    setSaving(true);
+    setFormError(null);
+    try {
+      if (!form.vehicleId) throw new Error("Please select a vehicle (required).");
+
+      const payload = {
+        title: form.title.trim() || "Expense",
+        amount: Number(form.amount || 0),
+        category: CATEGORY_UI_TO_DB[form.category] ?? "Other",
+        date: toApiDate(form.date),
+        vehicleId: String(form.vehicleId),
+        description: form.description?.trim() || undefined,
       };
 
-      setExpenses((prev) => {
-        if (editingId) {
-          return prev.map((x) => (x.id === editingId ? payload : x));
-        }
-        return [payload, ...prev];
-      });
+      if (!Number.isFinite(payload.amount) || payload.amount <= 0) {
+        throw new Error("Please enter a valid amount.");
+      }
 
-      setOpen(false);
-      setEditingId(null);
-      setForm(emptyForm);
+      await api<Expense>("POST", "/expenses", payload);
+      setShowAdd(false);
+      await refetch();
+    } catch (err: any) {
+      setFormError(err?.message || "Failed to create expense");
     } finally {
-      setSubmitting(false);
+      setSaving(false);
     }
-  };
+  }
 
-  const remove = (id: string) => setExpenses((prev) => prev.filter((e) => e.id !== id));
+  async function submitEdit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!showEdit) return;
+    setSaving(true);
+    setFormError(null);
+    try {
+      if (!form.vehicleId) throw new Error("Please select a vehicle (required).");
 
-  /** UI helpers */
-  const errClass = (k: keyof Form) =>
-    (submitted || touched[k]) && (err as any)[k] ? " ring-2 ring-red-400 border-red-400" : "";
+      const payload = {
+        title: form.title.trim() || "Expense",
+        amount: Number(form.amount || 0),
+        category: CATEGORY_UI_TO_DB[form.category] ?? "Other",
+        date: toApiDate(form.date),
+        vehicleId: String(form.vehicleId),
+        description: form.description?.trim() || undefined,
+      };
 
-  /** ===== Render ===== */
+      await api<Expense>("PUT", `/expenses/${encodeURIComponent(showEdit.id)}`, payload);
+      setShowEdit(null);
+      await refetch();
+    } catch (err: any) {
+      setFormError(err?.message || "Failed to update expense");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function submitDelete() {
+    if (!confirmDelete) return;
+    try {
+      await api<void>("DELETE", `/expenses/${encodeURIComponent(confirmDelete.id)}`);
+      setConfirmDelete(null);
+      await refetch();
+    } catch (err: any) {
+      alert(err?.message || "Failed to delete expense");
+    }
+  }
+
+  /* --------------------------------- UI ----------------------------------- */
+
   return (
-    <section className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h3 className="text-lg font-semibold">Expense Tracking</h3>
-          <p className="text-white/60">Track and categorize your vehicle expenses</p>
+    <div className="min-h-[calc(100vh-5rem)] px-3 sm:px-6 text-white">
+      <div className="max-w-7xl mx-auto py-6 space-y-6">
+        {/* Heading */}
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <div className="text-2xl sm:text-3xl font-semibold tracking-tight">Expense Tracker</div>
+            <div className="text-white/70 text-sm">Record and review your spending</div>
+          </div>
+          <button
+            className="px-4 py-2 rounded-xl bg-white/15 hover:bg-white/20 border border-white/20 backdrop-blur-xl shadow-lg transition"
+            onClick={openAdd}
+          >
+            + Add Expense
+          </button>
         </div>
-        <GlassButton onClick={onOpenAdd} className="flex items-center gap-2">
-          <Plus className="w-4 h-4" /> Add Expense
-        </GlassButton>
-      </div>
 
-      {/* KPIs */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-        <GlassCard className="glass-hover">
-          <div className="text-white/70 text-sm">Total Expenses</div>
-          <div className="text-2xl font-semibold mt-1">{rm(total)}</div>
-        </GlassCard>
-        <GlassCard className="glass-hover">
-          <div className="text-white/70 text-sm">This Month</div>
-          <div className="text-2xl font-semibold mt-1">{rm(thisMonth)}</div>
-        </GlassCard>
-        <GlassCard className="glass-hover">
-          <div className="text-white/70 text-sm">Total Records</div>
-          <div className="text-2xl font-semibold mt-1">{count}</div>
-        </GlassCard>
-        <GlassCard className="glass-hover">
-          <div className="text-white/70 text-sm">Avg/Month</div>
-          <div className="text-2xl font-semibold mt-1">{rm(avgPerMonth || 0)}</div>
-        </GlassCard>
-      </div>
+        {/* Filters */}
+        <div className="bg-white/10 border border-white/10 rounded-2xl p-4 backdrop-blur-xl shadow-xl">
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
+            <input
+              className="rounded-xl bg-white/10 border border-white/20 px-3 py-2 outline-none focus:ring-2 focus:ring-indigo-400/50"
+              placeholder="Search title or category"
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+            />
 
-      {/* Search & filters */}
-      <div className="flex flex-col lg:flex-row gap-3 items-stretch">
-        <div className="relative flex-1">
-          <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-white/50" />
-          <input
-            className="glass-input pl-9 w-full"
-            placeholder="Search expenses..."
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-          />
-        </div>
-        <select
-          className="glass-input lg:w-56"
-          value={catFilter}
-          onChange={(e) => setCatFilter(e.target.value as ExpenseCategory | "All")}
-        >
-          <option value="All">All Categories</option>
-          {CATEGORIES.map((c) => (
-            <option key={c} value={c}>
-              {c}
-            </option>
-          ))}
-        </select>
-        <select
-          className="glass-input lg:w-56"
-          value={vehFilter}
-          onChange={(e) => setVehFilter(e.target.value)}
-        >
-          <option value="all">All Vehicles</option>
-          {vehicles.map((v) => (
-            <option key={(v as any).id} value={(v as any).id}>
-              {(v as any).name || (v as any).plate || (v as any).id}
-            </option>
-          ))}
-        </select>
-        <select
-          className="glass-input lg:w-44"
-          value={sortKey}
-          onChange={(e) => setSortKey(e.target.value as any)}
-        >
-          <option value="date_desc">Sort by Date</option>
-          <option value="date_asc">Date ↑</option>
-          <option value="amount_desc">Amount ↓</option>
-          <option value="amount_asc">Amount ↑</option>
-        </select>
-      </div>
+            <select
+              className="rounded-xl bg-white/10 border border-white/20 px-3 py-2 outline-none focus:ring-2 focus:ring-indigo-400/50"
+              value={category}
+              onChange={(e) => setCategory(e.target.value as any)}
+            >
+              <option value="All">All</option>
+              {CATEGORY_OPTIONS_UI.map((c) => (
+                <option key={c} value={c}>
+                  {c}
+                </option>
+              ))}
+            </select>
 
-      {/* List */}
-      {filtered.length === 0 ? (
-        <GlassPanel className="min-h-[140px] flex items-center justify-center text-white/60">
-          No expenses yet
-        </GlassPanel>
-      ) : (
-        <div className="grid grid-cols-1 gap-4">
-          {filtered.map((e) => (
-            <div key={e.id} className="glass-card glass-hover p-4">
-              <div className="flex items-start justify-between gap-4">
-                {/* Left */}
-                <div className="flex items-start gap-3 min-w-0">
-                  <IconByCategory cat={e.category} />
-                  <div className="min-w-0">
-                    <div className="font-semibold text-base truncate">{e.title}</div>
-                    <div className="text-white/70 flex items-center gap-2 flex-wrap">
-                      <span>{e.category}</span>
-                      <span className="inline-flex items-center gap-1">
-                        • <Car className="w-4 h-4" /> {vehicleLabel(vehicles, e.vehicleId) || "—"}
-                      </span>
-                      <span>• {fmtDate(e.date)}</span>
-                    </div>
-                    {e.description && (
-                      <div className="text-white/60 text-sm mt-1 line-clamp-2">{e.description}</div>
-                    )}
-                  </div>
-                </div>
+            <select
+              className="rounded-xl bg-white/10 border border-white/20 px-3 py-2 outline-none focus:ring-2 focus:ring-indigo-400/50"
+              value={vehicleId}
+              onChange={(e) => setVehicleId(e.target.value)}
+            >
+              <option value="">All Vehicles</option>
+              {vehicles.map((v) => (
+                <option key={v.id} value={v.id}>
+                  {vehicleLabel(v)}
+                </option>
+              ))}
+            </select>
 
-                {/* Right */}
-                <div className="flex items-center gap-3 shrink-0">
-                  <div className="text-lg font-semibold">{rm(e.amount)}</div>
-                  <button className="glass-btn p-2" aria-label="Edit" onClick={() => onOpenEdit(e)}>
-                    <Pencil className="w-4 h-4" />
-                  </button>
-                  <button className="glass-btn p-2" aria-label="Delete" onClick={() => remove(e.id)}>
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* ===== Modal (Add / Edit) ===== */}
-      {open && (
-        <div className="fixed inset-0 z-50 overflow-y-auto overscroll-contain">
-          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm" onClick={closeModal} />
-          <div className="relative min-h-full flex items-start justify-center py-10">
-            <div className="w-[min(980px,92vw)]" role="dialog" aria-modal="true">
-              <GlassPanel className="relative">
-                <button
-                  onClick={closeModal}
-                  className="absolute right-4 top-4 p-2 rounded-lg hover:bg-white/10"
-                  aria-label="Close"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-
-                <div className="mb-6">
-                  <h4 className="text-xl font-semibold">
-                    {editingId ? "Edit Expense" : "Add New Expense"}
-                  </h4>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm text-white/70 mb-1">Vehicle</label>
-                    <select
-                      className={`glass-input w-full${errClass("vehicleId")}`}
-                      value={form.vehicleId}
-                      onChange={(e) => setForm((p) => ({ ...p, vehicleId: e.target.value }))}
-                      onBlur={() => setTouched((t) => ({ ...t, vehicleId: true }))}
-                      required
-                    >
-                      <option value="">Select Vehicle</option>
-                      {vehicles.map((v: any) => (
-                        <option key={v.id} value={v.id}>
-                          {v.name || v.plate || v.id}
-                        </option>
-                      ))}
-                    </select>
-                    {(submitted || touched.vehicleId) && err.vehicleId && (
-                      <div className="mt-1 text-sm text-red-400">{err.vehicleId}</div>
-                    )}
-                  </div>
-
-                  <div>
-                    <label className="block text-sm text-white/70 mb-1">Category</label>
-                    <select
-                      className={`glass-input w-full${errClass("category")}`}
-                      value={form.category}
-                      onChange={(e) =>
-                        setForm((p) => ({ ...p, category: e.target.value as ExpenseCategory }))
-                      }
-                      onBlur={() => setTouched((t) => ({ ...t, category: true }))}
-                      required
-                    >
-                      <option value="">Select Category</option>
-                      {CATEGORIES.map((c) => (
-                        <option key={c} value={c}>
-                          {c}
-                        </option>
-                      ))}
-                    </select>
-                    {(submitted || touched.category) && err.category && (
-                      <div className="mt-1 text-sm text-red-400">{err.category}</div>
-                    )}
-                  </div>
-
-                  <div>
-                    <label className="block text-sm text-white/70 mb-1">Amount (RM)</label>
-                    <input
-                      inputMode="decimal"
-                      className={`glass-input w-full${errClass("amount")}`}
-                      placeholder="0.00"
-                      value={form.amount}
-                      onChange={(e) => setForm((p) => ({ ...p, amount: e.target.value }))}
-                      onBlur={() => setTouched((t) => ({ ...t, amount: true }))}
-                      required
-                    />
-                    {(submitted || touched.amount) && err.amount && (
-                      <div className="mt-1 text-sm text-red-400">{err.amount}</div>
-                    )}
-                  </div>
-
-                  <div>
-                    <label className="block text-sm text-white/70 mb-1">Date</label>
-                    <input
-                      type="date"
-                      className={`glass-input w-full${errClass("date")}`}
-                      value={form.date}
-                      onChange={(e) => setForm((p) => ({ ...p, date: e.target.value }))}
-                      onBlur={() => setTouched((t) => ({ ...t, date: true }))}
-                      required
-                    />
-                    {(submitted || touched.date) && err.date && (
-                      <div className="mt-1 text-sm text-red-400">{err.date}</div>
-                    )}
-                  </div>
-
-                  <div className="md:col-span-2">
-                    <label className="block text-sm text-white/70 mb-1">Title</label>
-                    <input
-                      className={`glass-input w-full${errClass("title")}`}
-                      placeholder="Shell Station, Damansara"
-                      value={form.title}
-                      onChange={(e) => setForm((p) => ({ ...p, title: e.target.value }))}
-                      onBlur={() => setTouched((t) => ({ ...t, title: true }))}
-                      required
-                    />
-                    {(submitted || touched.title) && err.title && (
-                      <div className="mt-1 text-sm text-red-400">{err.title}</div>
-                    )}
-                  </div>
-
-                  <div className="md:col-span-2">
-                    <label className="block text-sm text-white/70 mb-1">Description</label>
-                    <input
-                      className="glass-input w-full"
-                      placeholder="Brief description of the expense"
-                      value={form.description}
-                      onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))}
-                    />
-                  </div>
-
-                  <div className="md:col-span-2">
-                    <label className="block text-sm text-white/70 mb-1">Receipt</label>
-                    <input ref={fileRef} type="file" hidden onChange={onPick} />
-                    <GlassButton onClick={() => fileRef.current?.click()} className="flex items-center gap-2">
-                      <Upload className="w-4 h-4" /> Scan Receipt
-                    </GlassButton>
-                    {form.receipt && (
-                      <div className="text-white/70 text-sm mt-2">{form.receipt.name}</div>
-                    )}
-                  </div>
-                </div>
-
-                <div className="mt-6 flex items-center justify-end gap-3">
-                  <GlassButton onClick={closeModal}>Cancel</GlassButton>
-                  <GlassButton
-                    onClick={saveExpense}
-                    className={`${(!isValid || submitting) ? "opacity-60 cursor-not-allowed" : ""}`}
-                    aria-disabled={!isValid || submitting}
-                  >
-                    {submitting ? "Saving…" : editingId ? "Save Changes" : "Add Expense"}
-                  </GlassButton>
-                </div>
-              </GlassPanel>
-            </div>
+            <input
+              type="date"
+              className="rounded-xl bg-white/10 border border-white/20 px-3 py-2 outline-none focus:ring-2 focus:ring-indigo-400/50"
+              value={from}
+              onChange={(e) => setFrom(e.target.value)}
+              placeholder="From"
+            />
+            <input
+              type="date"
+              className="rounded-xl bg-white/10 border border-white/20 px-3 py-2 outline-none focus:ring-2 focus:ring-indigo-400/50"
+              value={to}
+              onChange={(e) => setTo(e.target.value)}
+              placeholder="To"
+            />
+          </div>
+          <div className="mt-3 text-sm text-white/70">
+            Showing {filtered.length} of {expenses.length} • Total {fmtMY.format(total)}
           </div>
         </div>
+
+        {/* Loading */}
+        {loading && (
+          <div className="bg-white/10 border border-white/10 rounded-2xl p-4 backdrop-blur-xl shadow-xl text-white/80">
+            Loading expenses…
+          </div>
+        )}
+
+        {/* Error */}
+        {error && (
+          <div className="bg-red-900/30 border border-red-500/30 rounded-2xl p-4 text-sm text-red-200">
+            {error}
+          </div>
+        )}
+
+        {/* Table */}
+        <div className="bg-white/10 border border-white/10 rounded-2xl backdrop-blur-xl shadow-xl overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="min-w-full text-sm">
+              <thead className="bg-white/10 text-white/80">
+                <tr>
+                  <th className="text-left px-4 py-3">Date</th>
+                  <th className="text-left px-4 py-3">Title</th>
+                  <th className="text-left px-4 py-3">Category</th>
+                  <th className="text-right px-4 py-3">Amount</th>
+                  <th className="text-left px-4 py-3">Vehicle</th>
+                  <th className="text-right px-4 py-3">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="px-4 py-6 text-center text-white/60">
+                      No expenses found. Try adjusting filters or add a new expense.
+                    </td>
+                  </tr>
+                ) : (
+                  filtered.map((x) => (
+                    <tr key={x.id} className="border-t border-white/10 hover:bg-white/5">
+                      <td className="px-4 py-3">{toISOyyyyMMdd(x.date)}</td>
+                      <td className="px-4 py-3">{x.title}</td>
+                      <td className="px-4 py-3">{CATEGORY_DB_TO_UI[x.category] || x.category}</td>
+                      <td className="px-4 py-3 text-right">{fmtMY.format(Number(x.amount || 0))}</td>
+                      <td className="px-4 py-3">{vehicleLabel(vehicles.find((v) => v.id === x.vehicleId))}</td>
+                      <td className="px-4 py-3 text-right">
+                        <button
+                          className="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/15 border border-white/20 mr-2"
+                          onClick={() => openEdit(x)}
+                        >
+                          Edit
+                        </button>
+                        <button
+                          className="px-3 py-1.5 rounded-lg bg-red-500/20 hover:bg-red-500/30 border border-red-500/40"
+                          onClick={() => setConfirmDelete(x)}
+                        >
+                          Delete
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      {/* Add Modal */}
+      {showAdd && (
+        <Modal onClose={() => setShowAdd(false)} title="Add Expense">
+          {formError && <ErrorBanner text={formError} />}
+          <form className="space-y-4" onSubmit={submitAdd}>
+            <Input
+              label="Title"
+              placeholder="e.g., Fuel, Road Tax, Maintenance"
+              value={form.title}
+              onChange={(v) => setForm((f) => ({ ...f, title: v }))}
+              required
+            />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <Input
+                label="Amount (RM)"
+                type="number"
+                step="0.01"
+                min="0"
+                value={String(form.amount)}
+                onChange={(v) => setForm((f) => ({ ...f, amount: v === "" ? "" : Number(v) }))}
+                required
+              />
+              <Input
+                label="Date"
+                type="date"
+                value={form.date}
+                onChange={(v) => setForm((f) => ({ ...f, date: v }))}
+                required
+              />
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <Select
+                label="Category"
+                value={form.category}
+                onChange={(v) => setForm((f) => ({ ...f, category: v as CategoryUI }))}
+                options={CATEGORY_OPTIONS_UI}
+              />
+              <Select
+                label="Vehicle (required)"
+                value={form.vehicleId}
+                onChange={(v) => setForm((f) => ({ ...f, vehicleId: v }))}
+                options={["", ...vehicles.map((v) => v.id)]}
+                renderOption={(val) => (val === "" ? "— Select Vehicle —" : vehicleLabel(vehicles.find((x) => x.id === val)))}
+              />
+            </div>
+
+            <ModalActions onCancel={() => setShowAdd(false)} submitText={saving ? "Saving…" : "Save Expense"} />
+          </form>
+        </Modal>
       )}
-    </section>
+
+      {/* Edit Modal */}
+      {showEdit && (
+        <Modal onClose={() => setShowEdit(null)} title="Edit Expense">
+          {formError && <ErrorBanner text={formError} />}
+          <form className="space-y-4" onSubmit={submitEdit}>
+            <Input
+              label="Title"
+              placeholder="e.g., Fuel, Road Tax, Maintenance"
+              value={form.title}
+              onChange={(v) => setForm((f) => ({ ...f, title: v }))}
+              required
+            />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <Input
+                label="Amount (RM)"
+                type="number"
+                step="0.01"
+                min="0"
+                value={String(form.amount)}
+                onChange={(v) => setForm((f) => ({ ...f, amount: v === "" ? "" : Number(v) }))}
+                required
+              />
+              <Input
+                label="Date"
+                type="date"
+                value={form.date}
+                onChange={(v) => setForm((f) => ({ ...f, date: v }))}
+                required
+              />
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <Select
+                label="Category"
+                value={form.category}
+                onChange={(v) => setForm((f) => ({ ...f, category: v as CategoryUI }))}
+                options={CATEGORY_OPTIONS_UI}
+              />
+              <Select
+                label="Vehicle (required)"
+                value={form.vehicleId}
+                onChange={(v) => setForm((f) => ({ ...f, vehicleId: v }))}
+                options={["", ...vehicles.map((v) => v.id)]}
+                renderOption={(val) => (val === "" ? "— Select Vehicle —" : vehicleLabel(vehicles.find((x) => x.id === val)))}
+              />
+            </div>
+
+            <ModalActions onCancel={() => setShowEdit(null)} submitText={saving ? "Saving…" : "Update Expense"} />
+          </form>
+        </Modal>
+      )}
+
+      {/* Delete Modal */}
+      {confirmDelete && (
+        <Modal onClose={() => setConfirmDelete(null)} title="Delete Expense">
+          <div className="text-white/80">
+            Are you sure you want to delete <span className="font-semibold">{confirmDelete.title}</span>?
+          </div>
+          <div className="mt-4 flex justify-end gap-3">
+            <button
+              className="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/15 border border-white/20"
+              onClick={() => setConfirmDelete(null)}
+            >
+              Cancel
+            </button>
+            <button
+              className="px-4 py-2 rounded-xl bg-red-500/20 hover:bg-red-500/30 border border-red-500/40"
+              onClick={submitDelete}
+            >
+              Delete
+            </button>
+          </div>
+        </Modal>
+      )}
+    </div>
+  );
+}
+
+/* ----------------------------- UI bits ------------------------------------ */
+
+function Modal({
+  children,
+  title,
+  onClose,
+}: {
+  children: React.ReactNode;
+  title: string;
+  onClose: () => void;
+}) {
+  React.useEffect(() => {
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
+  return (
+    <div className="fixed inset-0 z-[60]">
+      <div className="absolute inset-0 bg-black/50" onClick={onClose} />
+      <div className="absolute left-1/2 top-16 -translate-x-1/2 w-[min(680px,92vw)]">
+        <div className="rounded-2xl bg-white/10 border border-white/15 backdrop-blur-xl shadow-2xl">
+          <div className="px-5 py-4 border-b border-white/10 text-lg font-semibold">{title}</div>
+          <div className="max-h-[70vh] overflow-y-auto p-5">{children}</div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ModalActions({
+  submitText = "Save",
+  onCancel,
+}: {
+  submitText?: string;
+  onCancel: () => void;
+}) {
+  return (
+    <div className="pt-2 flex justify-end gap-3">
+      <button
+        type="button"
+        className="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/15 border border-white/20"
+        onClick={onCancel}
+      >
+        Cancel
+      </button>
+      <button type="submit" className="px-4 py-2 rounded-xl bg-indigo-500/80 hover:bg-indigo-500 text-white">
+        {submitText}
+      </button>
+    </div>
+  );
+}
+
+function Input({
+  label,
+  type = "text",
+  value,
+  onChange,
+  placeholder,
+  required,
+  step,
+  min,
+}: {
+  label: string;
+  type?: "text" | "number" | "date";
+  value: string;
+  onChange: (val: string) => void;
+  placeholder?: string;
+  required?: boolean;
+  step?: string;
+  min?: string | number;
+}) {
+  return (
+    <div className="flex flex-col gap-1.5">
+      <label className="text-sm text-white/80">{label}</label>
+      <input
+        type={type}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        required={required}
+        step={step}
+        min={min}
+        className="rounded-xl bg-white/10 border border-white/20 px-3 py-2 outline-none focus:ring-2 focus:ring-indigo-400/50"
+      />
+    </div>
+  );
+}
+
+function Select<T extends string>({
+  label,
+  value,
+  onChange,
+  options,
+  renderOption,
+}: {
+  label: string;
+  value: T;
+  onChange: (v: T) => void;
+  options: ReadonlyArray<T>;          // ← accept readonly arrays too
+  renderOption?: (v: T) => React.ReactNode;
+}) {
+  return (
+    <div className="flex flex-col gap-1.5">
+      <label className="text-sm text-white/80">{label}</label>
+      <select
+        className="rounded-xl bg-white/10 border border-white/20 px-3 py-2 outline-none focus:ring-2 focus:ring-indigo-400/50"
+        value={value}
+        onChange={(e) => onChange(e.target.value as T)}
+      >
+        {options.map((opt) => (
+          <option key={String(opt)} value={opt}>
+            {renderOption ? renderOption(opt) : String(opt)}
+          </option>
+        ))}
+      </select>
+    </div>
+  );
+}
+
+function ErrorBanner({ text }: { text: string }) {
+  return (
+    <div className="mb-3 text-sm text-red-300 bg-red-900/30 border border-red-500/30 rounded-lg p-2">
+      {text}
+    </div>
   );
 }

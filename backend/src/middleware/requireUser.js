@@ -1,4 +1,5 @@
 import jwt from 'jsonwebtoken';
+import config from '../config/config.js';
 
 export function requireUser(req, res, next) {
   const hdr = req.headers.authorization || '';
@@ -7,11 +8,9 @@ export function requireUser(req, res, next) {
 
   if (token) {
     try {
-      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      const decoded = jwt.verify(token, config.jwt.secret);
       userId = decoded.userId || decoded.sub || decoded.id;
-    } catch (e) {
-      // 忽略，走 demo 兜底
-    }
+    } catch {}
   }
   if (!userId && req.headers['x-demo-user-id']) {
     userId = String(req.headers['x-demo-user-id']);

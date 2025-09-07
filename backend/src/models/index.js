@@ -1,64 +1,24 @@
-const { sequelize } = require('../config/database');
-const User = require('./User');
-const Vehicle = require('./Vehicle');
-const ValidationResult = require('./ValidationResult');
-const Document = require('./Document');
+import { sequelize } from "../config/database.js";         // must export { sequelize }
+import User from "./User.js";
+import Vehicle from "./Vehicle.js";
+import ValidationResult from "./ValidationResult.js";
+import Document from "./Document.js";
 
-// Define associations
-User.hasMany(Vehicle, {
-  foreignKey: 'userId',
-  as: 'vehicles'
-});
+// --- Associations ---
+User.hasMany(Vehicle, { foreignKey: "userId", as: "vehicles" });
+Vehicle.belongsTo(User, { foreignKey: "userId", as: "user" });
 
-Vehicle.belongsTo(User, {
-  foreignKey: 'userId',
-  as: 'user'
-});
+User.hasMany(ValidationResult, { foreignKey: "userId", as: "validationResults" });
+ValidationResult.belongsTo(User, { foreignKey: "userId", as: "user" });
 
-User.hasMany(ValidationResult, {
-  foreignKey: 'userId',
-  as: 'validationResults'
-});
+Vehicle.hasMany(ValidationResult, { foreignKey: "vehicleId", as: "validationResults" });
+ValidationResult.belongsTo(Vehicle, { foreignKey: "vehicleId", as: "vehicle" });
 
-ValidationResult.belongsTo(User, {
-  foreignKey: 'userId',
-  as: 'user'
-});
+User.hasMany(Document, { foreignKey: "userId", as: "documents" });
+Document.belongsTo(User, { foreignKey: "userId", as: "user" });
 
-Vehicle.hasMany(ValidationResult, {
-  foreignKey: 'vehicleId',
-  as: 'validationResults'
-});
+Vehicle.hasMany(Document, { foreignKey: "vehicleId", as: "documents" });
+Document.belongsTo(Vehicle, { foreignKey: "vehicleId", as: "vehicle" });
 
-ValidationResult.belongsTo(Vehicle, {
-  foreignKey: 'vehicleId',
-  as: 'vehicle'
-});
-
-User.hasMany(Document, {
-  foreignKey: 'userId',
-  as: 'documents'
-});
-
-Document.belongsTo(User, {
-  foreignKey: 'userId',
-  as: 'user'
-});
-
-Vehicle.hasMany(Document, {
-  foreignKey: 'vehicleId',
-  as: 'documents'
-});
-
-Document.belongsTo(Vehicle, {
-  foreignKey: 'vehicleId',
-  as: 'vehicle'
-});
-
-module.exports = {
-  sequelize,
-  User,
-  Vehicle,
-  ValidationResult,
-  Document
-};
+// --- Exports (named) ---
+export { sequelize, User, Vehicle, ValidationResult, Document };

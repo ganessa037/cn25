@@ -1,28 +1,43 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
-import App from "./App";
-import "./index.css";
+import { BrowserRouter } from "react-router-dom";
 import { GoogleOAuthProvider } from "@react-oauth/google";
+import App from "./App";
+import ErrorBoundary from "./shared/ErrorBoundary";
+import "./index.css";
 
-const cid = import.meta.env.VITE_GOOGLE_CLIENT_ID as string | undefined;
+// Read the client id from Vite env
+const GOOGLE_CLIENT_ID =
+  (import.meta as any).env?.VITE_GOOGLE_CLIENT_ID as string | undefined;
 
-const rootEl = document.getElementById("root");
-if (!rootEl) {
-  const fallback = document.createElement("div");
-  fallback.style.cssText = "padding:16px;color:#fff;background:#111;min-height:100vh";
-  fallback.innerHTML =
-    "<h1 style='font-size:20px;margin-bottom:8px'>Missing #root</h1><p>index.html need &lt;div id='root'&gt;&lt;/div&gt;</p>";
-  document.body.appendChild(fallback);
-} else {
-  ReactDOM.createRoot(rootEl).render(
-    <React.StrictMode>
-      {cid ? (
-        <GoogleOAuthProvider clientId={cid}>
-          <App />
-        </GoogleOAuthProvider>
-      ) : (
-        <App />
-      )}
-    </React.StrictMode>
+/**
+ * Render children with GoogleOAuthProvider only when client id exists.
+ * If it's missing, we still render the app so the site isn't blank,
+ * and log a clear warning.
+ */
+function WithGoogle({ children }: { children: React.ReactNode }) {
+  if (!GOOGLE_CLIENT_ID) {
+    console.warn(
+      "[Google OAuth] Missing VITE_GOOGLE_CLIENT_ID in your environment (.env). " +
+      "Google login will be disabled until you set it."
+    );
+    return <>{children}</>;
+  }
+  return (
+    <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
+      {children}
+    </GoogleOAuthProvider>
   );
 }
+
+ReactDOM.createRoot(document.getElementById("root")!).render(
+  <React.StrictMode>
+    <ErrorBoundary>
+      <WithGoogle>
+        <BrowserRouter>
+          <App />
+        </BrowserRouter>
+      </WithGoogle>
+    </ErrorBoundary>
+  </React.StrictMode>
+);

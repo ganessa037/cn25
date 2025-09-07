@@ -1,88 +1,141 @@
-import React from "react";
+import * as React from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { User as UserIcon, Settings, LogOut } from "lucide-react";
+import { Settings, User, LogOut } from "lucide-react";
+import logoUrl from "../assets/keretaku-icon.png";
+
+/** Signed-in check (reads localStorage.user.token) */
+function isAuthed(): boolean {
+  try {
+    return !!JSON.parse(localStorage.getItem("user") || "{}")?.token;
+  } catch {
+    return false;
+  }
+}
+
+/** Smooth-scroll helper for landing sections */
+function scrollToIdOrNavigate(id: string, navigate: (to: string) => void) {
+  const el = document.getElementById(id);
+  if (el) {
+    el.scrollIntoView({ behavior: "smooth", block: "start" });
+  } else {
+    navigate(`/landing#${id}`);
+  }
+}
 
 export default function Header() {
+  const location = useLocation();
   const navigate = useNavigate();
-  const loc = useLocation();
 
-  const authed = !!localStorage.getItem("token");
-  const user = (() => {
-    try { return JSON.parse(localStorage.getItem("user") || "null"); } catch { return null; }
-  })();
+  // Landing variant on "/" or "/landing"
+  const isLanding = location.pathname === "/" || location.pathname.startsWith("/landing");
+  const authed = isAuthed();
+  const brandTo = authed && !isLanding ? "/dashboard" : "/landing";
 
-  const onDashboard = loc.pathname.startsWith("/dashboard");
-
-  const logout = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("refreshToken");
-    localStorage.removeItem("user");
-    navigate("/signin");
-  };
-
-  const scrollTo = (id: string) => {
-    if (!onDashboard) navigate(`/dashboard#${id}`);
-    setTimeout(() => {
-      const el = document.getElementById(id);
-      if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
-    }, 0);
-  };
+  const goSettings = () => navigate("/dashboard/analytics"); // keep or change to your settings route
+  const goProfile = () => navigate("/dashboard/profile");     // stub until implemented
+  const exitToLanding = () => navigate("/landing", { replace: true });
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 bg-black/80 backdrop-blur-xl border-b border-white/10">
-      <div className="container mx-auto px-4 py-3">
-        <div className="flex items-center justify-between">
-          {/* brand */}
-          <Link to="/" className="flex items-center space-x-2">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-r from-blue-500 to-purple-600 flex items-center justify-center">🚗</div>
-            <span className="text-white font-bold text-xl">KeretaKu</span>
+    <header className="fixed top-0 left-0 right-0 z-50">
+      <div className="mx-2 my-2 rounded-2xl bg-white/10 border border-white/15 backdrop-blur-xl shadow-2xl">
+        <div className="h-14 px-3 sm:px-5 flex items-center justify-between">
+          {/* Brand */}
+          <Link to={brandTo} className="flex items-center gap-2 select-none">
+            <span
+              className="
+                inline-grid place-items-center
+                w-9 h-9 rounded-full
+                bg-gradient-to-tr from-sky-400 to-violet-500
+                p-[2px] ring-1 ring-white/30
+              "
+              aria-hidden
+            >
+              <span className="w-full h-full rounded-full bg-white/10 backdrop-blur-md grid place-items-center">
+                {/* If you put the file in /public, use /keretaku-icon.png; otherwise import it as logoUrl */}
+                <img
+                  src={logoUrl}
+                  alt=""
+                  className="w-6 h-6 rounded-full object-contain"
+                  draggable={false}
+                />
+              </span>
+            </span>
+
+            <span className="text-white font-semibold tracking-wide">KeretaKu</span>
           </Link>
 
-          {/* left nav */}
-          <nav className="hidden md:flex items-center gap-6">
-            {!authed && (
-              <>
-                <a href="/#features" className="text-white/80 hover:text-white">Features</a>
-                <a href="/#security" className="text-white/80 hover:text-white">Security</a>
-                <a href="/#faq" className="text-white/80 hover:text-white">FAQ</a>
-              </>
-            )}
-          </nav>
-
-          {/* right actions */}
-          <div className="flex items-center gap-2">
-            {authed ? (
-              <>
-                <Link to="/settings" className="p-2 rounded-lg hover:bg-white/10" aria-label="Settings">
-                  <Settings className="w-5 h-5 text-white" />
-                </Link>
-                <Link to="/profile" className="p-0.5 rounded-full hover:ring-2 ring-white/30" aria-label="Profile">
-                  {user?.picture ? (
-                    <img src={user.picture} alt="avatar" className="w-8 h-8 rounded-full object-cover" />
-                  ) : (
-                    <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center">
-                      <UserIcon className="w-5 h-5 text-white" />
-                    </div>
-                  )}
-                </Link>
-                <button onClick={logout} className="p-2 rounded-lg hover:bg-white/10" aria-label="Sign out">
-                  <LogOut className="w-5 h-5 text-white" />
+          {/* Center content varies by page */}
+          {isLanding ? (
+            <div className="hidden md:flex flex-col items-center justify-center">
+              <nav className="flex items-center gap-6 text-white/90">
+                <button
+                  className="hover:text-white transition"
+                  onClick={() => scrollToIdOrNavigate("features", navigate)}
+                >
+                  Features
                 </button>
-              </>
-            ) : (
-              <>
-                <Link to="/signin" className="hidden md:inline-block px-4 py-2 rounded-lg border border-white/20 text-white/90 hover:bg-white/10">Sign In</Link>
-                <Link to="/signin" className="ml-2 inline-block px-4 py-2 rounded-lg bg-gradient-to-r from-blue-600 to-purple-600 text-white font-medium hover:from-blue-700 hover:to-purple-700">Get Started</Link>
-              </>
-            )}
-          </div>
+                <button
+                  className="hover:text-white transition"
+                  onClick={() => scrollToIdOrNavigate("security", navigate)}
+                >
+                  Security
+                </button>
+                <button
+                  className="hover:text-white transition"
+                  onClick={() => scrollToIdOrNavigate("faq", navigate)}
+                >
+                  FAQ
+                </button>
+              </nav>
+            
+            </div>
+          ) : (
+            <div /> // keep spacing symmetrical on app pages
+          )}
 
-          {/* mobile burger（保持原样占位） */}
-          <button className="md:hidden text-white" aria-label="Menu">
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-            </svg>
-          </button>
+          {/* Right controls */}
+          {isLanding ? (
+            // On landing we keep it minimal; optionally show Sign In
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => navigate("/signin")}
+                className="px-3 h-10 rounded-lg bg-white/10 hover:bg-white/15 border border-white/20 text-white/90"
+                title="Sign in"
+              >
+                Sign In
+              </button>
+            </div>
+          ) : (
+            // App header (main pages)
+            <div className="flex items-center gap-2">
+              <button
+                title="Settings"
+                aria-label="Settings"
+                onClick={goSettings}
+                className="w-10 h-10 rounded-lg bg-white/10 hover:bg-white/15 border border-white/20 text-white/90"
+              >
+                <Settings className="w-5 h-5 mx-auto" />
+              </button>
+
+              <button
+                title="Profile"
+                aria-label="Profile"
+                onClick={goProfile}
+                className="w-10 h-10 rounded-lg bg-white/10 hover:bg-white/15 border border-white/20 text-white/90"
+              >
+                <User className="w-5 h-5 mx-auto" />
+              </button>
+
+              <button
+                title="Exit to Landing"
+                aria-label="Exit to Landing"
+                onClick={exitToLanding}
+                className="w-10 h-10 rounded-lg bg-red-500/20 hover:bg-red-500/30 border border-red-500/40 text-white"
+              >
+                <LogOut className="w-5 h-5 mx-auto" />
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </header>

@@ -3,6 +3,7 @@ import Header from '../layout/Header';
 import { Hero, ProblemSolution, Features, Trust, Testimonial, FAQ, FinalCTA } from '../features/Landing';
 import Footer from '../layout/Footer';
 import { useScrollToTop } from '../hooks/useScrollToTop';
+try { localStorage.removeItem("user"); } catch {}
 
 function LandingPage() {
   useScrollToTop();

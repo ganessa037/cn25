@@ -1,40 +1,63 @@
-import { useEffect } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import * as React from "react";
+import { useLocation, useNavigate } from "react-router-dom";
+
+function apiBase() {
+  const raw =
+    (import.meta as any).env?.VITE_API_URL ||
+    (import.meta as any).env?.VITE_BACKEND_URL ||
+    "http://127.0.0.1:3000";
+  const t = String(raw).replace(/\/$/, "");
+  return t.endsWith("/api") ? t : `${t}/api`;
+}
+function parseSearch(search: string) {
+  const p = new URLSearchParams(search);
+  const obj: Record<string, string> = {};
+  p.forEach((v, k) => (obj[k] = v));
+  return obj;
+}
+function parseUserParam(val?: string | null) {
+  if (!val) return {};
+  const candidates = [val, decodeURIComponent(val)];
+  for (const c of candidates) {
+    try { return JSON.parse(c); } catch {}
+    try { return JSON.parse(atob(c)); } catch {}
+  }
+  return {};
+}
 
 export default function SignInPage() {
-  const navigate = useNavigate();
+  const nav = useNavigate();
+  const loc = useLocation();
 
-  // 已有 token 就直接进仪表盘
-  useEffect(() => {
-    const u = JSON.parse(localStorage.getItem("user") || "null");
-    if (u?.token) navigate("/dashboard", { replace: true });
-  }, [navigate]);
+  // If backend redirected back to /signin?token=... handle it here
+  React.useEffect(() => {
+    const params = parseSearch(loc.search);
+    const token = params.token || params.jwt || "";
+    const user = parseUserParam(params.user);
+    if (token) {
+      try {
+        localStorage.setItem("user", JSON.stringify({ token, ...user }));
+      } catch {}
+      window.history.replaceState({}, "", "/dashboard");
+      nav("/dashboard", { replace: true });
+    }
+  }, [loc.search, nav]);
 
   const startGoogle = () => {
-    const base = import.meta.env.VITE_BACKEND_URL || "http://127.0.0.1:3000";
-    window.location.href = `${base}/api/auth/google/start`;
+    window.location.href = `${apiBase()}/auth/google`;
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center">
-      <div className="w-[680px] rounded-2xl border border-white/10 bg-white/5 backdrop-blur-xl p-10">
-        <div className="flex flex-col items-center gap-6">
-          <div className="h-20 w-20 rounded-2xl bg-gradient-to-br from-indigo-500 to-fuchsia-500 grid place-content-center text-4xl">🚗</div>
-          <h1 className="text-4xl font-semibold">Welcome Back</h1>
-          <p className="text-white/70">Sign in to continue to your dashboard</p>
-
-          <button
-            onClick={startGoogle}
-            className="w-full h-16 rounded-xl bg-white/10 hover:bg-white/15 transition
-                       border border-white/10 text-lg font-semibold"
-          >
-            Use Google
-          </button>
-
-          <Link to="/" className="text-indigo-300 hover:underline mt-4">
-            Back to Home
-          </Link>
-        </div>
+    <div className="min-h-[calc(100vh-5rem)] grid place-items-center">
+      <div className="max-w-md w-full bg-white/10 border border-white/10 rounded-2xl p-6 backdrop-blur-xl shadow-xl text-center">
+        <div className="text-2xl font-semibold">Sign in</div>
+        <div className="text-white/80 mt-1">Use Google to continue</div>
+        <button
+          onClick={startGoogle}
+          className="mt-6 w-full h-11 rounded-xl bg-white/20 hover:bg-white/25 border border-white/30 text-white font-medium"
+        >
+          Continue with Google
+        </button>
       </div>
     </div>
   );

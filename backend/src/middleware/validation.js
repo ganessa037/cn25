@@ -112,8 +112,10 @@ const validate = (schema) => {
   };
 };
 
+
 // Export schemas and validation middleware
 module.exports = {
   schemas,
   validate
 };
+

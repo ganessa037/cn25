@@ -1,214 +1,139 @@
+/* Fonts + Tailwind layers */
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100;200;300;400;500;600;700;800;900&display=swap');
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-}
+/* -------------------------------------------------------------------------- */
+/* Base resets                                                                */
+/* -------------------------------------------------------------------------- */
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root { color-scheme: dark; }
 
 html {
   scroll-behavior: smooth;
   font-family: 'Inter', system-ui, -apple-system, sans-serif;
-  .section-anchor { scroll-margin-top: 88px; }
+  /* If you link to #anchors below a fixed header, this keeps content visible */
+  scroll-padding-top: 80px;
 }
 
-/* Smooth anchor scrolling */
-html {
-  scroll-padding-top: 80px; /* Account for fixed header */
-}
+.section-anchor { scroll-margin-top: 88px; }
 
+/* Body background: subtle radial highlight over dark */
 body {
-  background: #000;
   color: #fff;
+  background: #000;
+  background: radial-gradient(1200px 600px at 50% -200px, rgba(88,101,242,.35), rgba(2,8,23,1) 60%);
   overflow-x: hidden;
 }
 
-/* Custom Scrollbar */
-::-webkit-scrollbar {
-  width: 8px;
-}
+/* Selection + focus */
+::selection { background: rgba(59,130,246,0.3); color: #fff; }
+button:focus, a:focus { outline: 2px solid rgba(59,130,246,0.5); outline-offset: 2px; }
 
-::-webkit-scrollbar-track {
-  background: #111;
-}
-
-::-webkit-scrollbar-thumb {
-  background: linear-gradient(to bottom, #3b82f6, #8b5cf6);
-  border-radius: 4px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: linear-gradient(to bottom, #2563eb, #7c3aed);
-}
-
-/* Custom Animations */
-@keyframes float {
-  0%, 100% { transform: translateY(0px) rotate(0deg); }
-  50% { transform: translateY(-20px) rotate(180deg); }
-}
-
-@keyframes glow {
-  0%, 100% { opacity: 0.5; }
-  50% { opacity: 1; }
-}
-
-@keyframes shimmer {
-  0% { transform: translateX(-100%) skewX(-15deg); }
-  100% { transform: translateX(200%) skewX(-15deg); }
-}
-
-@keyframes float-3d {
-  0%, 100% { transform: translate3d(0, 0, 0) rotateX(0deg) rotateY(0deg); }
-  25% { transform: translate3d(10px, -5px, 20px) rotateX(2deg) rotateY(1deg); }
-  50% { transform: translate3d(0, 10px, -10px) rotateX(0deg) rotateY(0deg); }
-  75% { transform: translate3d(-10px, 5px, 20px) rotateX(-2deg) rotateY(-1deg); }
-}
-
-.animate-float {
-  animation: float 6s ease-in-out infinite;
-}
-
-.animate-glow {
-  animation: glow 2s ease-in-out infinite;
-}
-
-.animate-shimmer {
-  animation: shimmer 2s ease-in-out infinite;
-}
-
-.animate-float-3d {
-  animation: float-3d 10s ease-in-out infinite;
-}
-
-/* Gradient Text Animation */
-@keyframes gradient-shift {
-  0% { background-position: 0% 50%; }
-  50% { background-position: 100% 50%; }
-  100% { background-position: 0% 50%; }
-}
-
-.animate-gradient {
-  background-size: 200% 200%;
-  animation: gradient-shift 3s ease infinite;
-}
-
-/* Particle Effects */
-.particle {
-  position: absolute;
-  width: 2px;
-  height: 2px;
-  background: rgba(59, 130, 246, 0.6);
-  border-radius: 50%;
-  animation: particle-float 8s linear infinite;
-}
-
-@keyframes particle-float {
-  0% {
-    transform: translateY(100vh) translateX(0);
-    opacity: 0;
-  }
-  10% {
-    opacity: 1;
-  }
-  90% {
-    opacity: 1;
-  }
-  100% {
-    transform: translateY(-100vh) translateX(100px);
-    opacity: 0;
-  }
-}
-
-/* Glass Morphism */
-.glass {
-  background: rgba(255, 255, 255, 0.05);
-  backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-/* Smooth Transitions */
+/* Smooth transitions for interactive feel */
 * {
   transition-property: transform, opacity, background-color, border-color, color, fill, stroke;
   transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* Page Transition Reset */
-.page-transition-enter {
-  opacity: 0;
-  transform: translateY(20px);
+/* Subtle, consistent scrollbars */
+*::-webkit-scrollbar { height: 8px; width: 8px; }
+*::-webkit-scrollbar-thumb { background: rgba(255,255,255,.15); border-radius: 999px; }
+*::-webkit-scrollbar-track { background: transparent; }
+
+/* -------------------------------------------------------------------------- */
+/* Animations                                                                 */
+/* -------------------------------------------------------------------------- */
+@keyframes float { 0%,100%{transform:translateY(0) rotate(0)} 50%{transform:translateY(-20px) rotate(180deg)} }
+@keyframes glow { 0%,100%{opacity:.5} 50%{opacity:1} }
+@keyframes shimmer { 0%{transform:translateX(-100%) skewX(-15deg)} 100%{transform:translateX(200%) skewX(-15deg)} }
+@keyframes float-3d {
+  0%,100%{transform:translate3d(0,0,0) rotateX(0) rotateY(0)}
+  25%{transform:translate3d(10px,-5px,20px) rotateX(2deg) rotateY(1deg)}
+  50%{transform:translate3d(0,10px,-10px) rotateX(0) rotateY(0)}
+  75%{transform:translate3d(-10px,5px,20px) rotateX(-2deg) rotateY(-1deg)}
+}
+@keyframes gradient-shift { 0%{background-position:0% 50%} 50%{background-position:100% 50%} 100%{background-position:0% 50%} }
+@keyframes particle-float {
+  0%   { transform: translateY(100vh) translateX(0);     opacity: 0; }
+  10%  { opacity: 1; }
+  90%  { opacity: 1; }
+  100% { transform: translateY(-100vh) translateX(100px); opacity: 0; }
 }
 
-.page-transition-enter-active {
-  opacity: 1;
-  transform: translateY(0);
-  transition: opacity 300ms, transform 300ms;
+/* Animation utilities */
+.animate-float { animation: float 6s ease-in-out infinite; }
+.animate-glow { animation: glow 2s ease-in-out infinite; }
+.animate-shimmer { animation: shimmer 2s ease-in-out infinite; }
+.animate-float-3d { animation: float-3d 10s ease-in-out infinite; }
+.animate-gradient { background-size: 200% 200%; animation: gradient-shift 3s ease infinite; }
+
+/* Tiny particles (use sparingly) */
+.particle {
+  position: absolute; width: 2px; height: 2px; border-radius: 50%;
+  background: rgba(59,130,246,0.6); animation: particle-float 8s linear infinite;
 }
 
-.page-transition-exit {
-  opacity: 1;
-  transform: translateY(0);
-}
+/* 3D perspective helper */
+.perspective-1000 { perspective: 1000px; }
 
-.page-transition-exit-active {
-  opacity: 0;
-  transform: translateY(-20px);
-  transition: opacity 300ms, transform 300ms;
-}
-
-/* Selection Styling */
-::selection {
-  background: rgba(59, 130, 246, 0.3);
-  color: white;
-}
-
-/* Focus Styles */
-button:focus,
-a:focus {
-  outline: 2px solid rgba(59, 130, 246, 0.5);
-  outline-offset: 2px;
-}
-
-.perspective-1000 {
-  perspective: 1000px;
-}
-
-/* Dark UI quick overrides */
-:root { color-scheme: dark; }
-
-/* 默认文字白色；组件里若手动写了深色，下面几行会覆盖回白色 */
+/* -------------------------------------------------------------------------- */
+/* Dark UI overrides (keep UI readable against glass)                         */
+/* -------------------------------------------------------------------------- */
+/* Force common tailwind text-gray classes to white in dark shell */
 .text-gray-900, .text-gray-800, .text-gray-700 { color: #fff !important; }
-.text-gray-600 { color: #d1d5db !important; } /* = gray-300 近似 */
-.text-gray-500 { color: #e5e7eb !important; } /* = gray-200 近似 */
+.text-gray-600 { color: #d1d5db !important; } /* ~gray-300 */
+.text-gray-500 { color: #e5e7eb !important; } /* ~gray-200 */
 
-/* 表单控件在深色下也看得清 */
+/* Form controls in dark */
 input, select, textarea { color: #fff; background-color: rgba(255,255,255,0.04); }
 ::placeholder { color: rgba(255,255,255,0.5); }
 
-
-/* ==== Glassmorphism utilities ==== */
+/* -------------------------------------------------------------------------- */
+/* Glassmorphism utilities (single source of truth)                            */
+/* -------------------------------------------------------------------------- */
 @layer utilities {
+  /* Base glass look: subtle transparency + blur + soft border + shadow */
   .glass {
-    @apply bg-white/10 backdrop-blur-xl border border-white/10 rounded-2xl shadow-lg shadow-black/20;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    backdrop-filter: blur(16px);
+    border-radius: 1rem;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.35);
   }
-  .glass-hover {
-    @apply hover:bg-white/15 hover:border-white/20 transition-colors;
-  }
-  .glass-card {
-    @apply glass p-4 md:p-6;
-  }
-  .glass-panel {
-    @apply glass p-6 md:p-8;
-  }
+
+  .glass-hover { @apply hover:bg-white/15 hover:border-white/20 transition-colors; }
+
+  .glass-card { @apply p-4 md:p-6; }
+  .glass-card { @apply rounded-2xl; }            /* ensure large radius */
+  .glass-card { @apply border border-white/10; } /* extra subtle border */
+  .glass-card { @apply bg-white/10; }            /* inner lift on cards */
+  .glass-card { @apply backdrop-blur-xl; }       /* extra blur for cards */
+
+  .glass-panel { @apply p-6 md:p-8; }
+  .glass-panel { @apply rounded-2xl; }
+  .glass-panel { @apply border border-white/10; }
+  .glass-panel { @apply backdrop-blur-xl; }
+
   .glass-input {
     @apply bg-white/10 text-white placeholder-white/60 border border-white/10 rounded-lg px-3 py-2
            focus:outline-none focus:ring-2 focus:ring-white/30 focus:border-white/30;
   }
+
   .glass-btn {
-    @apply bg-white/10 text-white rounded-xl px-4 py-2 border border-white/10
+    @apply text-white rounded-xl px-4 py-2 border border-white/10
            hover:bg-white/20 hover:border-white/20 transition-colors;
+    background: rgba(255,255,255,0.08);
   }
 }
+
+/* -------------------------------------------------------------------------- */
+/* Page transition helpers (optional)                                          */
+/* -------------------------------------------------------------------------- */
+.page-transition-enter { opacity: 0; transform: translateY(20px); }
+.page-transition-enter-active { opacity: 1; transform: translateY(0); transition: opacity 300ms, transform 300ms; }
+.page-transition-exit { opacity: 1; transform: translateY(0); }
+.page-transition-exit-active { opacity: 0; transform: translateY(-20px); transition: opacity 300ms, transform 300ms; }

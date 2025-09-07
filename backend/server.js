@@ -1,7 +1,10 @@
 import app from './app.js';
-import 'dotenv/config';
+import config from './src/config/config.js';
+import logger from './src/utils/logger.js';
 
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, '127.0.0.1', () => {
-  console.log(`API listening on http://127.0.0.1:${PORT}`);
+const PORT = config.port || process.env.PORT || 3000;
+const HOST = config.host || process.env.HOST || '127.0.0.1';
+
+app.listen(PORT, HOST, () => {
+  logger.info(`API listening on http://${HOST}:${PORT}`);
 });

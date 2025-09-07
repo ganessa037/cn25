@@ -1,365 +1,821 @@
-import React, { useEffect, useMemo, useState } from "react";
-import {
-  AlertTriangle, Clock, CheckCircle2, BadgeAlert, Wrench, Droplet,
-  CalendarDays, ChevronRight
-} from "lucide-react";
-import { GlassButton, GlassCard, GlassPanel } from "../../components/ui/Glass";
-import type { Vehicle } from "../../pages/Dashboard";
+import * as React from "react";
 
-// ========== Types ==========
+/**
+ * Notifications
+ * - Data source: Vehicle table via /api/vehicles (OAuth Bearer token).
+ * - Computes: Insurance & Road Tax expiry, Service overdue/due soon, plus a Low-priority fuel tip.
+ * - "Take Action" opens modals that PUT updates to /api/vehicles/:id.
+ * - "Dismiss" hides an alert for 7 days (localStorage only, no DB row required).
+ */
+
+/* ----------------------------- Types ----------------------------- */
+
+type Vehicle = {
+  id: string;
+  brand: string;
+  model?: string | null;
+  year?: number | null;
+  plate?: string | null;
+  color?: string | null;
+  fuelType?: string | null;
+
+  roadTaxExpiry?: string | null;
+  insuranceExpiry?: string | null;
+  lastServiceDate?: string | null;
+  nextServiceDate?: string | null;
+  currentMileage?: number | null;
+};
+
 type Priority = "high" | "medium" | "low";
+type AlertKind =
+  | "insurance_expired"
+  | "insurance_expiring"
+  | "roadtax_expired"
+  | "roadtax_expiring"
+  | "service_overdue"
+  | "service_due_soon"
+  | "fuel_price";
 
-type AlertKind = "insurance_expired" | "roadtax_expired" | "service_overdue" | "fuel_price";
-
-type DashAlert = {
-  id: string;              // stable id
+type Alert = {
+  id: string;
   kind: AlertKind;
   priority: Priority;
   title: string;
   message: string;
+  context: string;
+  dateLabel?: string;
   vehicleId?: string;
-  date?: string;           // for display
-  category?: string;       // small label at the right (e.g., Alert/Maintenance/Info)
-  actionRequired?: boolean;
+  action?: { label: string; open: () => void };
 };
 
-// Optional: parent可传入导航回调；若未传则 console.log 代替
-export interface NotificationsProps {
-  vehicles: Vehicle[];
-  onNavigate?: (section: "Vehicle Manager" | "Expense Tracker" | "Document Manager" | "Analytics") => void;
+/* -------------------------- API Utilities ------------------------ */
+
+function resolveApiBase(): string {
+  const raw =
+    (import.meta as any).env?.VITE_API_URL ||
+    (import.meta as any).env?.VITE_BACKEND_URL ||
+    "http://127.0.0.1:3000";
+  const trimmed = String(raw).replace(/\/$/, "");
+  return trimmed.endsWith("/api") ? trimmed : `${trimmed}/api`;
+}
+const API_BASE = resolveApiBase();
+
+function getToken(): string | null {
+  try {
+    const raw = localStorage.getItem("user");
+    if (!raw) return null;
+    return JSON.parse(raw)?.token ?? null;
+  } catch {
+    return null;
+  }
 }
 
-// ========== Utils ==========
-const fmtDate = (s?: string) => {
-  if (!s) return "—";
+async function api<T>(
+  method: "GET" | "POST" | "PUT" | "DELETE",
+  path: string,
+  body?: unknown
+): Promise<T> {
+  const token = getToken();
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  if (token) headers["Authorization"] = `Bearer ${token}`;
+  const res = await fetch(`${API_BASE}${path}`, {
+    method,
+    headers,
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    throw new Error(`${res.status} ${res.statusText} — ${text || "Request failed"}`);
+  }
+  return (res.status === 204 ? (null as unknown as T) : ((await res.json()) as T));
+}
+
+/* ----------------------------- Helpers --------------------------- */
+
+const toISODate = (s?: string | null) => {
+  if (!s) return "";
   const d = new Date(s);
-  return Number.isNaN(d.getTime()) ? s : d.toLocaleDateString("en-US");
+  if (isNaN(+d)) return "";
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  return `${yyyy}-${mm}-${dd}`;
 };
+const fmtDate = (s?: string | null) => (s ? toISODate(s) : "—");
 
-const daysDiffFromToday = (dateISO: string) => {
-  const today = new Date(); today.setHours(0,0,0,0);
-  const d = new Date(dateISO); d.setHours(0,0,0,0);
-  const ms = d.getTime() - today.getTime();
-  return Math.round(ms / (24 * 3600 * 1000)); // future positive, past negative
-};
+function toDbTimestamp(localDate: string | ""): string | null {
+  if (!localDate) return null;
+  const [y, m, d] = localDate.split("-").map(Number);
+  if (!y || !m || !d) return null;
+  const yyyy = y;
+  const mm = String(m).padStart(2, "0");
+  const dd = String(d).padStart(2, "0");
+  return `${yyyy}-${mm}-${dd}T00:00:00.000`;
+}
 
-const vehicleLabel = (v?: any) => {
-  if (!v) return undefined;
-  const title = [v.brand, v.model].filter(Boolean).join(" ");
-  const plate = v.plate ? `(${v.plate})` : "";
-  return title ? `${title} ${plate}`.trim() : v.name || v.plate || v.id;
-};
+function daysFromToday(dateIso?: string | null): number | null {
+  if (!dateIso) return null;
+  const d = new Date(dateIso);
+  if (isNaN(+d)) return null;
+  const today = new Date();
+  const a = new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+  const b = new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime();
+  return Math.round((a - b) / (24 * 60 * 60 * 1000));
+}
 
-const STORAGE_KEY = "keretaku:dismissedAlerts";
-const loadDismissed = (): Record<string, true> => {
+function labelForVehicle(v: Vehicle): string {
+  const base = `${v.brand ?? "Vehicle"}${v.model ? " " + v.model : ""}`.trim();
+  return v.plate ? `${base} (${v.plate})` : base;
+}
+
+/* -------------------------- Local Dismiss ------------------------- */
+
+type Dismissed = { id: string; until: number }; // epoch ms
+
+const DISMISS_KEY = "notifications_dismissed";
+
+function loadDismissed(): Dismissed[] {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? JSON.parse(raw) : {};
-  } catch { return {}; }
-};
-const saveDismissed = (map: Record<string, true>) => {
-  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(map)); } catch {}
-};
+    const raw = localStorage.getItem(DISMISS_KEY);
+    const arr = raw ? (JSON.parse(raw) as Dismissed[]) : [];
+    const now = Date.now();
+    return arr.filter((x) => x.until > now);
+  } catch {
+    return [];
+  }
+}
+function saveDismissed(list: Dismissed[]) {
+  localStorage.setItem(DISMISS_KEY, JSON.stringify(list));
+}
+function isDismissed(id: string): boolean {
+  return loadDismissed().some((x) => x.id === id && x.until > Date.now());
+}
+function dismissFor7Days(id: string) {
+  const list = loadDismissed().filter((x) => x.id !== id);
+  list.push({ id, until: Date.now() + 7 * 24 * 60 * 60 * 1000 });
+  saveDismissed(list);
+}
 
-// ========== Component ==========
-export default function Notifications({ vehicles, onNavigate }: NotificationsProps) {
-  const [dismissed, setDismissed] = useState<Record<string, true>>(() => loadDismissed());
+/* ------------------------- Main Component ------------------------- */
 
-  useEffect(() => { saveDismissed(dismissed); }, [dismissed]);
+export default function Notifications() {
+  const [vehicles, setVehicles] = React.useState<Vehicle[]>([]);
+  const [loading, setLoading] = React.useState(true);
+  const [error, setError] = React.useState<string | null>(null);
 
-  // 基于车辆生成提醒（稳定 id）
-  const generated = useMemo<DashAlert[]>(() => {
-    const out: DashAlert[] = [];
-    const todayISO = new Date().toISOString().slice(0, 10);
+  // Modals
+  const [editVehicle, setEditVehicle] = React.useState<Vehicle | null>(null);
+  const [editMode, setEditMode] = React.useState<
+    | null
+    | { type: "insurance"; date: string }
+    | { type: "roadtax"; date: string }
+    | { type: "service"; lastDate: string; nextDate: string; mileage: string }
+  >(null);
 
-    vehicles.forEach((v: any) => {
+  const refetch = React.useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const v = await api<Vehicle[]>("GET", "/vehicles");
+      setVehicles(v || []);
+    } catch (err: any) {
+      setError(err?.message || "Failed to load notifications");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  React.useEffect(() => {
+    refetch();
+  }, [refetch]);
+
+  /* ------------------------- Build Alerts -------------------------- */
+
+  const alerts = React.useMemo<Alert[]>(() => {
+    const list: Alert[] = [];
+
+    vehicles.forEach((v) => {
       // Insurance
-      if (v.insuranceExpiry) {
-        const delta = daysDiffFromToday(v.insuranceExpiry);
-        if (delta < 0) {
-          out.push({
-            id: `veh:${v.id}:insurance_expired`,
-            kind: "insurance_expired",
-            priority: "high",
-            title: "Insurance Expired",
-            message: `Insurance for ${vehicleLabel(v)} has expired ${Math.abs(delta)} days ago.`,
-            vehicleId: v.id,
-            date: v.insuranceExpiry,
-            category: "Alert",
-            actionRequired: true,
-          });
-        } else if (delta <= 30) {
-          out.push({
-            id: `veh:${v.id}:insurance_expiring`,
-            kind: "insurance_expired",
-            priority: "medium",
-            title: "Insurance Expiring Soon",
-            message: `Insurance for ${vehicleLabel(v)} will expire in ${delta} days.`,
-            vehicleId: v.id,
-            date: v.insuranceExpiry,
-            category: "Alert",
-            actionRequired: true,
-          });
+      const insDays = daysFromToday(v.insuranceExpiry);
+      if (insDays !== null) {
+        if (insDays < 0) {
+          const id = `ins-exp-${v.id}-${toISODate(v.insuranceExpiry)}`;
+          if (!isDismissed(id))
+            list.push({
+              id,
+              kind: "insurance_expired",
+              priority: "high",
+              title: "Insurance Expired",
+              message: `Insurance for ${labelForVehicle(v)} has expired ${Math.abs(insDays)} days ago.`,
+              context: `${labelForVehicle(v)} • ${fmtDate(v.insuranceExpiry)}`,
+              dateLabel: fmtDate(v.insuranceExpiry),
+              vehicleId: v.id,
+              action: {
+                label: "Take Action",
+                open: () => {
+                  setEditVehicle(v);
+                  setEditMode({ type: "insurance", date: toISODate(v.insuranceExpiry) });
+                },
+              },
+            });
+        } else if (insDays <= 30) {
+          const id = `ins-soon-${v.id}-${toISODate(v.insuranceExpiry)}`;
+          if (!isDismissed(id))
+            list.push({
+              id,
+              kind: "insurance_expiring",
+              priority: "medium",
+              title: "Insurance Expiring Soon",
+              message: `Insurance for ${labelForVehicle(v)} expires in ${insDays} days.`,
+              context: `${labelForVehicle(v)} • ${fmtDate(v.insuranceExpiry)}`,
+              dateLabel: fmtDate(v.insuranceExpiry),
+              vehicleId: v.id,
+              action: {
+                label: "Take Action",
+                open: () => {
+                  setEditVehicle(v);
+                  setEditMode({ type: "insurance", date: toISODate(v.insuranceExpiry) });
+                },
+              },
+            });
         }
       }
 
       // Road Tax
-      if (v.roadTaxExpiry) {
-        const delta = daysDiffFromToday(v.roadTaxExpiry);
-        if (delta < 0) {
-          out.push({
-            id: `veh:${v.id}:roadtax_expired`,
-            kind: "roadtax_expired",
-            priority: "high",
-            title: "Road Tax Expired",
-            message: `Road tax for ${vehicleLabel(v)} has expired ${Math.abs(delta)} days ago.`,
-            vehicleId: v.id,
-            date: v.roadTaxExpiry,
-            category: "Alert",
-            actionRequired: true,
-          });
-        } else if (delta <= 30) {
-          out.push({
-            id: `veh:${v.id}:roadtax_expiring`,
-            kind: "roadtax_expired",
-            priority: "medium",
-            title: "Road Tax Expiring Soon",
-            message: `Road tax for ${vehicleLabel(v)} will expire in ${delta} days.`,
-            vehicleId: v.id,
-            date: v.roadTaxExpiry,
-            category: "Alert",
-            actionRequired: true,
-          });
+      const taxDays = daysFromToday(v.roadTaxExpiry);
+      if (taxDays !== null) {
+        if (taxDays < 0) {
+          const id = `tax-exp-${v.id}-${toISODate(v.roadTaxExpiry)}`;
+          if (!isDismissed(id))
+            list.push({
+              id,
+              kind: "roadtax_expired",
+              priority: "high",
+              title: "Road Tax Expired",
+              message: `Road tax for ${labelForVehicle(v)} has expired ${Math.abs(taxDays)} days ago.`,
+              context: `${labelForVehicle(v)} • ${fmtDate(v.roadTaxExpiry)}`,
+              dateLabel: fmtDate(v.roadTaxExpiry),
+              vehicleId: v.id,
+              action: {
+                label: "Take Action",
+                open: () => {
+                  setEditVehicle(v);
+                  setEditMode({ type: "roadtax", date: toISODate(v.roadTaxExpiry) });
+                },
+              },
+            });
+        } else if (taxDays <= 30) {
+          const id = `tax-soon-${v.id}-${toISODate(v.roadTaxExpiry)}`;
+          if (!isDismissed(id))
+            list.push({
+              id,
+              kind: "roadtax_expiring",
+              priority: "medium",
+              title: "Road Tax Expiring Soon",
+              message: `Road tax for ${labelForVehicle(v)} expires in ${taxDays} days.`,
+              context: `${labelForVehicle(v)} • ${fmtDate(v.roadTaxExpiry)}`,
+              dateLabel: fmtDate(v.roadTaxExpiry),
+              vehicleId: v.id,
+              action: {
+                label: "Take Action",
+                open: () => {
+                  setEditVehicle(v);
+                  setEditMode({ type: "roadtax", date: toISODate(v.roadTaxExpiry) });
+                },
+              },
+            });
         }
       }
 
-      // Next service overdue
-      if (v.nextServiceDate) {
-        const delta = daysDiffFromToday(v.nextServiceDate);
-        if (delta < 0) {
-          out.push({
-            id: `veh:${v.id}:service_overdue`,
-            kind: "service_overdue",
-            priority: "medium",
-            title: "Service Overdue",
-            message: `Service for ${vehicleLabel(v)} is overdue by ${Math.abs(delta)} days.`,
-            vehicleId: v.id,
-            date: v.nextServiceDate,
-            category: "Maintenance",
-            actionRequired: true,
-          });
+      // Service overdue / due soon
+      const svcDays = daysFromToday(v.nextServiceDate);
+      if (svcDays !== null) {
+        if (svcDays < 0) {
+          const id = `svc-ovd-${v.id}-${toISODate(v.nextServiceDate)}`;
+          if (!isDismissed(id))
+            list.push({
+              id,
+              kind: "service_overdue",
+              priority: "medium",
+              title: "Service Overdue",
+              message: `Service for ${labelForVehicle(v)} is overdue by ${Math.abs(svcDays)} days.`,
+              context: `${labelForVehicle(v)} • ${fmtDate(v.nextServiceDate)} • Maintenance`,
+              dateLabel: fmtDate(v.nextServiceDate),
+              vehicleId: v.id,
+              action: {
+                label: "Take Action",
+                open: () => {
+                  setEditVehicle(v);
+                  setEditMode({
+                    type: "service",
+                    lastDate: toISODate(v.lastServiceDate),
+                    nextDate: toISODate(v.nextServiceDate),
+                    mileage: String(v.currentMileage ?? ""),
+                  });
+                },
+              },
+            });
+        } else if (svcDays <= 30) {
+          const id = `svc-soon-${v.id}-${toISODate(v.nextServiceDate)}`;
+          if (!isDismissed(id))
+            list.push({
+              id,
+              kind: "service_due_soon",
+              priority: "low",
+              title: "Service Due Soon",
+              message: `Service for ${labelForVehicle(v)} is due in ${svcDays} days.`,
+              context: `${labelForVehicle(v)} • ${fmtDate(v.nextServiceDate)} • Maintenance`,
+              dateLabel: fmtDate(v.nextServiceDate),
+              vehicleId: v.id,
+              action: {
+                label: "Take Action",
+                open: () => {
+                  setEditVehicle(v);
+                  setEditMode({
+                    type: "service",
+                    lastDate: toISODate(v.lastServiceDate),
+                    nextDate: toISODate(v.nextServiceDate),
+                    mileage: String(v.currentMileage ?? ""),
+                  });
+                },
+              },
+            });
         }
       }
     });
 
-    // 示例：Fuel price alert（低优先级信息）
-    out.push({
-      id: `global:fuel_price_${new Date().toISOString().slice(0,10)}`,
-      kind: "fuel_price",
-      priority: "low",
-      title: "Fuel Price Alert",
-      message: "Petrol prices may increase next week. Consider refueling this weekend.",
-      date: todayISO,
-      category: "Info",
-      actionRequired: false,
-    });
+    // Optional low-priority info
+    const fuelId = `fuel-tip-${new Date().toISOString().slice(0, 10)}`;
+    if (!isDismissed(fuelId)) {
+      list.push({
+        id: fuelId,
+        kind: "fuel_price",
+        priority: "low",
+        title: "Fuel Price Alert",
+        message: "Petrol prices may increase next week. Consider refueling this weekend.",
+        context: `${new Date().toLocaleDateString()} • Info`,
+      });
+    }
 
-    return out;
+    // Sort by priority then by title
+    const weight: Record<Priority, number> = { high: 0, medium: 1, low: 2 };
+    return list.sort((a, b) => weight[a.priority] - weight[b.priority] || a.title.localeCompare(b.title));
   }, [vehicles]);
 
-  // 过滤已隐藏
-  const alerts = useMemo(() => generated.filter(a => !dismissed[a.id]), [generated, dismissed]);
-
-  const kpi = useMemo(() => {
-    const res = { high: 0, medium: 0, low: 0, total: alerts.length, actions: 0 };
-    alerts.forEach(a => {
-      if (a.priority === "high") res.high += 1;
-      if (a.priority === "medium") res.medium += 1;
-      if (a.priority === "low") res.low += 1;
-      if (a.actionRequired) res.actions += 1;
+  const counts = React.useMemo(() => {
+    let high = 0,
+      medium = 0,
+      low = 0;
+    alerts.forEach((a) => {
+      if (a.priority === "high") high++;
+      else if (a.priority === "medium") medium++;
+      else low++;
     });
-    return res;
+    return { high, medium, low, total: alerts.length };
   }, [alerts]);
 
-  const dismiss = (id: string) => {
-    setDismissed(prev => ({ ...prev, [id]: true }));
-  };
+  /* --------------------------- Actions ---------------------------- */
 
-  const takeAction = (a: DashAlert) => {
-    // 默认跳转到 Vehicle Manager；父层若传 onNavigate，则调用之
-    onNavigate?.("Vehicle Manager");
-    // 也可以在这里做更多：预选中车辆/打开编辑等（留给父层根据回调处理）
-  };
+  async function saveVehicle(id: string, patch: Partial<Vehicle>) {
+    await api<Vehicle>("PUT", `/vehicles/${encodeURIComponent(id)}`, patch);
+    await refetch();
+  }
 
-  // 样式工具
-  const prBadge = (p: Priority) => {
-    const base = "px-2 py-0.5 rounded-md text-xxs font-medium border inline-flex items-center gap-1";
-    if (p === "high") return <span className={`${base} bg-red-500/15 text-red-300 border-red-400/40`}><AlertTriangle className="w-3.5 h-3.5"/> HIGH</span>;
-    if (p === "medium") return <span className={`${base} bg-amber-500/15 text-amber-300 border-amber-400/40`}><Clock className="w-3.5 h-3.5"/> MEDIUM</span>;
-    return <span className={`${base} bg-sky-500/15 text-sky-300 border-sky-400/40`}><BadgeAlert className="w-3.5 h-3.5"/> LOW</span>;
-  };
+  function onDismiss(a: Alert) {
+    dismissFor7Days(a.id);
+    // Trigger a re-render by touching state (no need to refetch)
+    setVehicles((v) => [...v]);
+  }
 
-  const kindIcon = (a: DashAlert) => {
-    const wrap = "w-9 h-9 rounded-xl flex items-center justify-center mr-2";
-    switch (a.kind) {
-      case "insurance_expired":
-        return <div className={`${wrap} bg-rose-400/15`}><AlertTriangle className="w-5 h-5 text-rose-300"/></div>;
-      case "roadtax_expired":
-        return <div className={`${wrap} bg-orange-400/15`}><AlertTriangle className="w-5 h-5 text-orange-300"/></div>;
-      case "service_overdue":
-        return <div className={`${wrap} bg-amber-400/15`}><Wrench className="w-5 h-5 text-amber-300"/></div>;
-      default:
-        return <div className={`${wrap} bg-emerald-400/15`}><Droplet className="w-5 h-5 text-emerald-300"/></div>;
-    }
-  };
+  /* ------------------------------ UI -------------------------------- */
+
+  if (loading) {
+    return (
+      <div className="min-h-[calc(100vh-5rem)] grid place-items-center px-4 text-white bg-[radial-gradient(1200px_600px_at_50%_-200px,rgba(88,101,242,.35),rgba(2,8,23,1)_60%)]">
+        <div className="max-w-md w-full bg-white/10 border border-white/10 rounded-2xl p-6 backdrop-blur-xl shadow-xl">
+          Loading notifications…
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <section className="space-y-6">
-      {/* Header + actions required */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h3 className="text-lg font-semibold">Smart Notifications</h3>
-          <p className="text-white/60">Stay on top of your vehicle maintenance and renewals</p>
+    <div className="min-h-[calc(100vh-5rem)] px-3 sm:px-6 text-white bg-[radial-gradient(1200px_600px_at_50%_-200px,rgba(88,101,242,.35),rgba(2,8,23,1)_60%)]">
+      <div className="max-w-6xl mx-auto py-6 space-y-6">
+        {/* Header + summary */}
+        <div className="flex items-center justify-between">
+          <div>
+            <div className="text-2xl sm:text-3xl font-semibold tracking-tight">Smart Notifications</div>
+            <div className="text-white/70 text-sm">Stay on top of your vehicle maintenance and renewals</div>
+          </div>
+          <div className="text-white/70 text-sm">{counts.high + counts.medium} actions required</div>
         </div>
-        <div className="text-white/60 text-sm">{kpi.actions} actions required</div>
-      </div>
 
-      {/* KPIs */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-        <GlassCard className="glass-hover flex items-center justify-between">
-          <div>
-            <div className="text-white/70 text-sm">High Priority</div>
-            <div className="text-2xl font-semibold mt-1">{kpi.high}</div>
-          </div>
-          <AlertTriangle className="w-5 h-5 text-red-300" />
-        </GlassCard>
-        <GlassCard className="glass-hover flex items-center justify-between">
-          <div>
-            <div className="text-white/70 text-sm">Medium Priority</div>
-            <div className="text-2xl font-semibold mt-1">{kpi.medium}</div>
-          </div>
-          <Clock className="w-5 h-5 text-amber-300" />
-        </GlassCard>
-        <GlassCard className="glass-hover flex items-center justify-between">
-          <div>
-            <div className="text-white/70 text-sm">Low Priority</div>
-            <div className="text-2xl font-semibold mt-1">{kpi.low}</div>
-          </div>
-          <BadgeAlert className="w-5 h-5 text-sky-300" />
-        </GlassCard>
-        <GlassCard className="glass-hover flex items-center justify-between">
-          <div>
-            <div className="text-white/70 text-sm">Total Alerts</div>
-            <div className="text-2xl font-semibold mt-1">{kpi.total}</div>
-          </div>
-          <CheckCircle2 className="w-5 h-5 text-white/70" />
-        </GlassCard>
-      </div>
+        {/* Stat tiles */}
+        <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+          <Tile label="High Priority" value={counts.high} icon="🚨" />
+          <Tile label="Medium Priority" value={counts.medium} icon="🟧" />
+          <Tile label="Low Priority" value={counts.low} icon="🔔" />
+          <Tile label="Total Alerts" value={counts.total} icon="✅" />
+        </div>
 
-      {/* Alerts list */}
-      <div className="space-y-3">
-        {alerts.map((a) => {
-          const v = vehicles.find((x: any) => x.id === a.vehicleId);
-          const subtitle = [
-            v ? vehicleLabel(v) : undefined,
-            a.date ? fmtDate(a.date) : undefined,
-            a.category || undefined,
-          ].filter(Boolean).join("  •  ");
-
-          // 背景强调色
-          const tone =
-            a.priority === "high"
-              ? "ring-1 ring-red-400/30 bg-red-400/[0.07]"
-              : a.priority === "medium"
-              ? "ring-1 ring-amber-400/25 bg-amber-400/[0.06]"
-              : "ring-1 ring-sky-400/20 bg-sky-400/[0.05]";
-
-        return (
-          <div key={a.id} className={`glass-card p-4 ${tone}`}>
-            <div className="flex items-start justify-between gap-4">
-              {/* left */}
-              <div className="flex items-start gap-3 min-w-0">
-                {kindIcon(a)}
-                <div className="min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <div className="font-semibold">{a.title}</div>
-                    {prBadge(a.priority)}
-                    {a.actionRequired && (
-                      <span className="px-2 py-0.5 rounded-md text-xxs bg-amber-300/20 text-amber-200 border border-amber-300/30">
-                        Action Required
-                      </span>
-                    )}
-                  </div>
-                  <div className="text-white/70 mt-1">{a.message}</div>
-                  {subtitle && (
-                    <div className="text-white/50 text-sm mt-1 flex items-center gap-2">
-                      <CalendarDays className="w-3.5 h-3.5" />
-                      <span>{subtitle}</span>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* right actions */}
-              <div className="flex items-center gap-3 shrink-0">
-                {a.actionRequired && (
-                  <GlassButton onClick={() => takeAction(a)} className="px-3 py-1.5">
-                    Take Action <ChevronRight className="w-4 h-4" />
-                  </GlassButton>
-                )}
-                <button className="text-white/60 hover:text-white text-sm" onClick={() => dismiss(a.id)}>
-                  Dismiss
-                </button>
-              </div>
-            </div>
+        {/* Error */}
+        {error && (
+          <div className="bg-red-900/30 border border-red-500/30 rounded-2xl p-4 text-sm text-red-200">
+            {error}
           </div>
-        );})}
-        {alerts.length === 0 && (
-          <GlassPanel className="text-white/70 text-center py-10">
-            All caught up — no alerts right now 🎉
-          </GlassPanel>
         )}
-      </div>
 
-      {/* Smart Predictions */}
-      <div className="rounded-2xl border border-sky-300/20 bg-sky-400/10 p-4">
-        <div className="flex items-center gap-2 mb-3">
-          <BadgeAlert className="w-5 h-5 text-sky-300" />
-          <div className="font-semibold">Smart Predictions</div>
-        </div>
-
+        {/* Alerts list */}
         <div className="space-y-3">
-          <div className="glass-card bg-white/5">
-            <div className="flex items-center gap-2 mb-1">
-              <Droplet className="w-4 h-4 text-emerald-300" />
-              <span className="font-medium">Fuel Efficiency Insight</span>
+          {alerts.length === 0 ? (
+            <div className="bg-white/10 border border-white/10 rounded-2xl p-5 backdrop-blur-xl shadow-xl text-white/70">
+              All clear. No alerts at the moment.
             </div>
-            <div className="text-white/70">
-              Based on your driving patterns, you could save RM50/month by optimizing routes and consolidating trips.
-            </div>
-          </div>
+          ) : (
+            alerts.map((a) => (
+              <AlertRow key={a.id} alert={a} onDismiss={onDismiss} />
+            ))
+          )}
+        </div>
 
-          <div className="glass-card bg-white/5">
-            <div className="flex items-center gap-2 mb-1">
-              <Wrench className="w-4 h-4 text-amber-300" />
-              <span className="font-medium">Maintenance Prediction</span>
-            </div>
-            <div className="text-white/70">
-              Your vehicle will likely need brake pad replacement in 3–4 months based on current mileage trends.
-            </div>
-          </div>
-
-          <div className="glass-card bg-white/5">
-            <div className="flex items-center gap-2 mb-1">
-              <CheckCircle2 className="w-4 h-4 text-white/80" />
-              <span className="font-medium">Budget Forecast</span>
-            </div>
-            <div className="text-white/70">
-              Expected vehicle expenses for next month: RM400–500 (includes fuel, maintenance, and insurance).
-            </div>
-          </div>
+        {/* Smart predictions section (informational) */}
+        <div className="bg-indigo-400/10 border border-indigo-300/20 rounded-2xl p-5 backdrop-blur-xl shadow-xl space-y-3">
+          <div className="text-white/80 font-medium">Smart Predictions</div>
+          <PredictionCard
+            icon="🛣️"
+            title="Fuel Efficiency Insight"
+            text="Based on your driving patterns, you could save RM50/month by optimizing routes and consolidating trips."
+          />
+          <PredictionCard
+            icon="🧰"
+            title="Maintenance Prediction"
+            text="Your vehicles will likely need brake pad replacement in 3–4 months based on current mileage trends."
+          />
+          <PredictionCard
+            icon="💸"
+            title="Budget Forecast"
+            text="Expected vehicle expenses for next month: RM400–500 (fuel, maintenance, insurance)."
+          />
         </div>
       </div>
-    </section>
+
+      {/* Action modals */}
+      {editVehicle && editMode?.type === "insurance" && (
+        <Modal title="Update Insurance Expiry" onClose={() => setEditVehicle(null)}>
+          <InsuranceForm
+            dateDefault={(editMode as any).date || ""}
+            onCancel={() => setEditVehicle(null)}
+            onSave={async (d) => {
+              await saveVehicle(editVehicle.id, { insuranceExpiry: toDbTimestamp(d) });
+              setEditVehicle(null);
+            }}
+            vehicleLabel={labelForVehicle(editVehicle)}
+          />
+        </Modal>
+      )}
+
+      {editVehicle && editMode?.type === "roadtax" && (
+        <Modal title="Update Road Tax Expiry" onClose={() => setEditVehicle(null)}>
+          <RoadTaxForm
+            dateDefault={(editMode as any).date || ""}
+            onCancel={() => setEditVehicle(null)}
+            onSave={async (d) => {
+              await saveVehicle(editVehicle.id, { roadTaxExpiry: toDbTimestamp(d) });
+              setEditVehicle(null);
+            }}
+            vehicleLabel={labelForVehicle(editVehicle)}
+          />
+        </Modal>
+      )}
+
+      {editVehicle && editMode?.type === "service" && (
+        <Modal title="Record Service" onClose={() => setEditVehicle(null)}>
+          <ServiceForm
+            lastDefault={(editMode as any).lastDate || ""}
+            nextDefault={(editMode as any).nextDate || ""}
+            mileageDefault={(editMode as any).mileage || ""}
+            onCancel={() => setEditVehicle(null)}
+            onSave={async (payload) => {
+              const patch: Partial<Vehicle> = {
+                lastServiceDate: toDbTimestamp(payload.lastDate),
+                nextServiceDate: toDbTimestamp(payload.nextDate),
+                currentMileage:
+                  payload.mileage === "" ? undefined : Number(payload.mileage),
+              };
+              await saveVehicle(editVehicle.id, patch);
+              setEditVehicle(null);
+            }}
+            vehicleLabel={labelForVehicle(editVehicle)}
+          />
+        </Modal>
+      )}
+    </div>
+  );
+}
+
+/* ----------------------------- Pieces ----------------------------- */
+
+function Tile({ label, value, icon }: { label: string; value: number; icon: string }) {
+  return (
+    <div className="bg-white/10 border border-white/10 rounded-2xl p-4 backdrop-blur-xl shadow-xl">
+      <div className="text-sm text-white/70">{label}</div>
+      <div className="mt-1 text-2xl font-semibold flex items-center gap-2">
+        <span>{icon}</span> {value}
+      </div>
+    </div>
+  );
+}
+
+function AlertRow({
+  alert,
+  onDismiss,
+}: {
+  alert: Alert;
+  onDismiss: (a: Alert) => void;
+}) {
+  const tone =
+    alert.priority === "high"
+      ? "border-red-400/60 bg-red-400/10"
+      : alert.priority === "medium"
+      ? "border-amber-400/60 bg-amber-400/10"
+      : "border-sky-400/60 bg-sky-400/10";
+
+  return (
+    <div
+      className={`rounded-2xl border ${tone} p-4 backdrop-blur-xl shadow-xl flex items-start justify-between gap-4`}
+    >
+      <div className="space-y-1">
+        <div className="flex items-center gap-2">
+          <span className="text-white/80 font-medium">{alert.title}</span>
+          <PriorityPill level={alert.priority} />
+          {(alert.kind === "insurance_expired" ||
+            alert.kind === "roadtax_expired" ||
+            alert.kind === "service_overdue") && <Badge text="Action Required" />}
+        </div>
+        <div className="text-white/80">{alert.message}</div>
+        <div className="text-white/60 text-sm">{alert.context}</div>
+      </div>
+
+      <div className="flex items-center gap-3 shrink-0">
+        {alert.action && (
+          <button
+            className="px-3 py-1.5 rounded-lg bg-white/20 hover:bg-white/25 border border-white/30"
+            onClick={alert.action.open}
+          >
+            {alert.action.label}
+          </button>
+        )}
+        <button
+          className="text-white/60 hover:text-white/90"
+          onClick={() => onDismiss(alert)}
+          aria-label="Dismiss"
+        >
+          Dismiss
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function PriorityPill({ level }: { level: Priority }) {
+  const map: Record<Priority, string> = {
+    high: "bg-red-500/20 border-red-500/40 text-red-100",
+    medium: "bg-amber-500/20 border-amber-500/40 text-amber-100",
+    low: "bg-sky-500/20 border-sky-500/40 text-sky-100",
+  };
+  const label = level === "high" ? "HIGH" : level === "medium" ? "MEDIUM" : "LOW";
+  return <span className={`text-xs px-2 py-0.5 rounded-full border ${map[level]}`}>{label}</span>;
+}
+
+function Badge({ text }: { text: string }) {
+  return (
+    <span className="text-xs px-2 py-0.5 rounded-full border bg-white/10 border-white/20 text-white/80">
+      {text}
+    </span>
+  );
+}
+
+/* ---------------------------- Modal + Forms ---------------------------- */
+
+function Modal({
+  title,
+  children,
+  onClose,
+}: {
+  title: string;
+  children: React.ReactNode;
+  onClose: () => void;
+}) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center">
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative z-10 w-full max-w-xl bg-white/10 border border-white/15 rounded-2xl shadow-2xl backdrop-blur-xl p-6 max-h-[80vh] overflow-y-auto">
+        <div className="text-xl font-semibold">{title}</div>
+        <div className="text-white/70 text-sm mb-4">Changes are saved to your account</div>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+function Input({
+  label,
+  value,
+  onChange,
+  type = "text",
+  placeholder,
+  min,
+  max,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  type?: string;
+  placeholder?: string;
+  min?: string | number;
+  max?: string | number;
+}) {
+  return (
+    <div>
+      <label className="block text-sm text-white/80 mb-1">{label}</label>
+      <input
+        className="w-full rounded-xl bg-white/10 border border-white/20 px-3 py-2 outline-none focus:ring-2 focus:ring-indigo-400/50"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        type={type}
+        placeholder={placeholder}
+        min={min}
+        max={max}
+      />
+    </div>
+  );
+}
+
+function ModalActions({
+  onCancel,
+  submitText,
+}: {
+  onCancel: () => void;
+  submitText: string;
+}) {
+  return (
+    <div className="flex items-center justify-end gap-3 pt-2">
+      <button
+        type="button"
+        onClick={onCancel}
+        className="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/15 border border-white/20 transition"
+      >
+        Cancel
+      </button>
+      <button
+        type="submit"
+        className="px-4 py-2 rounded-xl bg-white/20 hover:bg-white/25 border border-white/30 transition"
+      >
+        {submitText}
+      </button>
+    </div>
+  );
+}
+
+function InsuranceForm({
+  dateDefault,
+  onSave,
+  onCancel,
+  vehicleLabel,
+}: {
+  dateDefault: string;
+  onSave: (date: string) => void | Promise<void>;
+  onCancel: () => void;
+  vehicleLabel: string;
+}) {
+  const [date, setDate] = React.useState(dateDefault || "");
+  const [saving, setSaving] = React.useState(false);
+  const [err, setErr] = React.useState<string | null>(null);
+  return (
+    <form
+      className="space-y-4"
+      onSubmit={async (e) => {
+        e.preventDefault();
+        setSaving(true);
+        setErr(null);
+        try {
+          await onSave(date);
+        } catch (ex: any) {
+          setErr(ex?.message || "Failed to save");
+        } finally {
+          setSaving(false);
+        }
+      }}
+    >
+      <div className="text-white/70 text-sm">Vehicle: {vehicleLabel}</div>
+      <Input label="New Insurance Expiry" type="date" value={date} onChange={setDate} />
+      {err && <div className="text-sm text-red-300 bg-red-900/30 border border-red-500/30 rounded-lg p-2">{err}</div>}
+      <ModalActions onCancel={onCancel} submitText={saving ? "Saving…" : "Save"} />
+    </form>
+  );
+}
+
+function RoadTaxForm({
+  dateDefault,
+  onSave,
+  onCancel,
+  vehicleLabel,
+}: {
+  dateDefault: string;
+  onSave: (date: string) => void | Promise<void>;
+  onCancel: () => void;
+  vehicleLabel: string;
+}) {
+  const [date, setDate] = React.useState(dateDefault || "");
+  const [saving, setSaving] = React.useState(false);
+  const [err, setErr] = React.useState<string | null>(null);
+  return (
+    <form
+      className="space-y-4"
+      onSubmit={async (e) => {
+        e.preventDefault();
+        setSaving(true);
+        setErr(null);
+        try {
+          await onSave(date);
+        } catch (ex: any) {
+          setErr(ex?.message || "Failed to save");
+        } finally {
+          setSaving(false);
+        }
+      }}
+    >
+      <div className="text-white/70 text-sm">Vehicle: {vehicleLabel}</div>
+      <Input label="New Road Tax Expiry" type="date" value={date} onChange={setDate} />
+      {err && <div className="text-sm text-red-300 bg-red-900/30 border border-red-500/30 rounded-lg p-2">{err}</div>}
+      <ModalActions onCancel={onCancel} submitText={saving ? "Saving…" : "Save"} />
+    </form>
+  );
+}
+
+function ServiceForm({
+  lastDefault,
+  nextDefault,
+  mileageDefault,
+  onSave,
+  onCancel,
+  vehicleLabel,
+}: {
+  lastDefault: string;
+  nextDefault: string;
+  mileageDefault: string;
+  onSave: (payload: { lastDate: string; nextDate: string; mileage: string }) => void | Promise<void>;
+  onCancel: () => void;
+  vehicleLabel: string;
+}) {
+  const [lastDate, setLastDate] = React.useState(lastDefault || "");
+  const [nextDate, setNextDate] = React.useState(nextDefault || "");
+  const [mileage, setMileage] = React.useState(mileageDefault || "");
+  const [saving, setSaving] = React.useState(false);
+  const [err, setErr] = React.useState<string | null>(null);
+  return (
+    <form
+      className="space-y-4"
+      onSubmit={async (e) => {
+        e.preventDefault();
+        setSaving(true);
+        setErr(null);
+        try {
+          await onSave({ lastDate, nextDate, mileage });
+        } catch (ex: any) {
+          setErr(ex?.message || "Failed to save");
+        } finally {
+          setSaving(false);
+        }
+      }}
+    >
+      <div className="text-white/70 text-sm">Vehicle: {vehicleLabel}</div>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <Input label="Last Service Date" type="date" value={lastDate} onChange={setLastDate} />
+        <Input label="Next Service Date" type="date" value={nextDate} onChange={setNextDate} />
+      </div>
+      <Input
+        label="Current Mileage (km)"
+        type="number"
+        value={String(mileage)}
+        onChange={setMileage}
+        min="0"
+      />
+      {err && <div className="text-sm text-red-300 bg-red-900/30 border border-red-500/30 rounded-lg p-2">{err}</div>}
+      <ModalActions onCancel={onCancel} submitText={saving ? "Saving…" : "Save"} />
+    </form>
+  );
+}
+
+function PredictionCard({ icon, title, text }: { icon: string; title: string; text: string }) {
+  return (
+    <div className="bg-white/10 border border-white/10 rounded-xl p-4">
+      <div className="flex items-center gap-2 font-medium">
+        <span>{icon}</span>
+        <span>{title}</span>
+      </div>
+      <div className="text-white/70 mt-1 text-sm">{text}</div>
+    </div>
   );
 }

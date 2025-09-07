@@ -1,57 +1,43 @@
-const BASE = import.meta.env.VITE_API_URL as string;
+import axios, { AxiosError } from "axios";
 
-function getAuthHeaders(): Record<string, string> {
-  const headers: Record<string, string> = { "Content-Type": "application/json" };
+const base =
+  import.meta.env.VITE_API_URL ||
+  (import.meta.env.VITE_BACKEND_URL
+    ? `${String(import.meta.env.VITE_BACKEND_URL).replace(/\/$/, "")}/api`
+    : "/api");
 
+export const api = axios.create({
+  baseURL: base,
+  withCredentials: true,
+});
+
+// 请求：自动带上 JWT
+api.interceptors.request.use((config) => {
   try {
     const raw = localStorage.getItem("user");
-    const token = raw ? JSON.parse(raw)?.token : "";
+    const token = raw ? JSON.parse(raw)?.token : null;
     if (token) {
-      headers.Authorization = `Bearer ${token}`;
-    } else {
-      // 开发阶段的兜底，后端中间件已支持
-      headers["x-demo-user-id"] = "demo-user-1";
+      config.headers = config.headers ?? {};
+      config.headers.Authorization = `Bearer ${token}`;
     }
-  } catch {
-    headers["x-demo-user-id"] = "demo-user-1";
+  } catch {}
+  return config;
+});
+
+// 响应：401 统一跳转登录
+api.interceptors.response.use(
+  (res) => res,
+  (err: AxiosError) => {
+    const status = err.response?.status;
+    if (status === 401) {
+      try {
+        localStorage.removeItem("user");
+      } catch {}
+      const next = encodeURIComponent(
+        window.location.pathname + window.location.search + window.location.hash
+      );
+      window.location.assign(`/signin?next=${next}`);
+    }
+    return Promise.reject(err);
   }
-
-  return headers;
-}
-
-async function request<T = any>(method: string, url: string, body?: unknown): Promise<T> {
-  const res = await fetch(`${BASE}${url}`, {
-    method,
-    headers: getAuthHeaders(),
-    body: body ? JSON.stringify(body) : undefined,
-  });
-  if (!res.ok) {
-    const text = await res.text().catch(() => "");
-    throw new Error(text || `${res.status} ${res.statusText}`);
-  }
-  // No Content
-  if (res.status === 204) return undefined as T;
-  return (await res.json()) as T;
-}
-
-// --- API 分组 --- //
-export const VehiclesAPI = {
-  list: () => request("GET", "/vehicles"),
-  create: (data: any) => request("POST", "/vehicles", data),
-  update: (id: string, data: any) => request("PUT", `/vehicles/${id}`, data),
-  remove: (id: string) => request("DELETE", `/vehicles/${id}`),
-};
-
-export const DocumentsAPI = {
-  list: () => request("GET", "/documents"),
-  create: (data: any) => request("POST", "/documents", data),
-  update: (id: string, data: any) => request("PUT", `/documents/${id}`, data),
-  remove: (id: string) => request("DELETE", `/documents/${id}`),
-};
-
-export const ExpensesAPI = {
-  list: () => request("GET", "/expenses"),
-  create: (data: any) => request("POST", "/expenses", data),
-  update: (id: string, data: any) => request("PUT", `/expenses/${id}`, data),
-  remove: (id: string) => request("DELETE", `/expenses/${id}`),
-};
+);

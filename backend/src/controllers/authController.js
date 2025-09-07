@@ -1,79 +1,142 @@
+// Google OAuth via Passport; creates/loads a Sequelize user,
+// mints a JWT, and redirects back to frontend with ?token=...&next=...
 import passport from "passport";
 import { Strategy as GoogleStrategy } from "passport-google-oauth20";
 import jwt from "jsonwebtoken";
-import { prisma } from "../db/prisma.js";
+import { randomBytes } from "crypto";
+import config from "../config/config.js";
+import logger from "../utils/logger.js";
+import * as models from "../models/index.js";
 
-const FRONTEND_URL = process.env.FRONTEND_URL;
-const CALLBACK_URL =
-  process.env.GOOGLE_CALLBACK_URL ||
-  "http://127.0.0.1:3000/api/auth/google/callback";
+/** Build the frontend redirect URL with token and optional next */
+function buildFrontendRedirect(token, nextOverride) {
+  const base = `${config.frontendUrl.replace(/\/$/, "")}${config.postLoginPath}`;
+  const usp = new URLSearchParams({ token });
+  if (nextOverride) usp.set("next", nextOverride);
+  return `${base}?${usp.toString()}`;
+}
 
-// 仅初始化一次 Google 策略
+/** Normalize names from Google profile */
+function extractNames(profile) {
+  const given =
+    profile?.name?.givenName ||
+    (profile?.displayName ? String(profile.displayName).split(" ")[0] : "") ||
+    "Google";
+  const family =
+    profile?.name?.familyName ||
+    (profile?.displayName
+      ? String(profile.displayName).split(" ").slice(1).join(" ")
+      : "") ||
+    "User";
+  return { given, family };
+}
+
+/** Initialize the Google strategy (stateless) */
 export function initGooglePassport() {
-  const { GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET } = process.env;
-  if (!GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_SECRET) {
-    console.error("❌ Missing GOOGLE_CLIENT_ID or GOOGLE_CLIENT_SECRET");
-    process.exit(1);
+  const { clientID, clientSecret, callbackURL } = config.google;
+
+  if (!clientID || !clientSecret || !callbackURL) {
+    logger.error("[OAuth] Missing Google env (GOOGLE_CLIENT_ID/SECRET/CALLBACK_URL)");
+    throw new Error("Google OAuth is not configured");
   }
 
   passport.use(
     new GoogleStrategy(
       {
-        clientID: GOOGLE_CLIENT_ID,
-        clientSecret: GOOGLE_CLIENT_SECRET,
-        callbackURL: CALLBACK_URL,
+        clientID,
+        clientSecret,
+        callbackURL, // must exactly match the Google Console value
+        passReqToCallback: true,
       },
-      async (_accessToken, _refreshToken, profile, done) => {
+      // Verify callback: find or create a Sequelize user
+      async (_req, _accessToken, _refreshToken, profile, done) => {
         try {
-          const email = profile.emails?.[0]?.value;
-          const name = profile.displayName;
-          const avatarUrl = profile.photos?.[0]?.value;
-          if (!email) return done(new Error("No email in Google profile"));
-
-          const user = await prisma.user.upsert({
-            where: { email },
-            update: { name, avatarUrl },
-            create: { email, name, avatarUrl },
-          });
-
+          const email =
+            profile?.emails?.find((e) => e.verified)?.value ||
+            profile?.emails?.[0]?.value;
+        
+          if (!email) return done(new Error("No email returned by Google"));
+        
+          const displayName = profile?.displayName || email.split("@")[0];
+          const avatar = profile?.photos?.[0]?.value || null;
+        
+          // Find by email
+          let user = await models.User.findOne({ where: { email } });
+        
+          if (!user) {
+            user = await models.User.create({
+              email,
+              name: displayName,
+              avatarUrl: avatar,
+            });
+          } else {
+            // best-effort profile refresh
+            const patch = {};
+            if (!user.name && displayName) patch.name = displayName;
+            if (!user.avatarUrl && avatar) patch.avatarUrl = avatar;
+            if (Object.keys(patch).length) await user.update(patch);
+          }
+        
           return done(null, {
             id: user.id,
             email: user.email,
-            name: user.name,
-            avatarUrl,
+            name: user.name || email,
           });
-        } catch (e) {
-          return done(e);
+        } catch (err) {
+          logger.error("[OAuth] Verify error:", err);
+          return done(err);
         }
       }
     )
   );
 }
 
-// 起跳到 Google
-export const startGoogle = passport.authenticate("google", {
-  scope: ["profile", "email"],
-  prompt: "select_account",
-  session: false,
-});
+/** Start OAuth; carries optional ?next=... in state */
+export function startGoogle(req, res, next) {
+  const nextParam = typeof req.query.next === "string" ? req.query.next : "";
+  const state = nextParam ? `n:${encodeURIComponent(nextParam)}` : "";
+  const authenticator = passport.authenticate("google", {
+    scope: ["profile", "email"],
+    prompt: "select_account",
+    session: false,
+    state,
+  });
+  authenticator(req, res, next);
+}
 
-// 回调：签发 JWT 并重定向前端
+/** Callback: authenticate, mint JWT, and redirect back */
 export const googleCallback = [
   passport.authenticate("google", {
     session: false,
-    failureRedirect: `${FRONTEND_URL}/signin`,
+    failureRedirect: `${config.frontendUrl.replace(/\/$/, "")}/signin?error=oauth_failed`,
   }),
   async (req, res) => {
-    const payload = {
-      userId: req.user.id,
-      email: req.user.email,
-      name: req.user.name,
-      avatarUrl: req.user.avatarUrl,
-    };
-    const token = jwt.sign(payload, process.env.JWT_SECRET || "dev-secret", {
-      expiresIn: "7d",
-    });
-    // 关键：统一从这里重定向携带 token
-    res.redirect(`${FRONTEND_URL}/dashboard?token=${encodeURIComponent(token)}`);
+    try {
+      let nextOverride = "";
+      if (typeof req.query.state === "string" && req.query.state.startsWith("n:")) {
+        nextOverride = decodeURIComponent(req.query.state.slice(2));
+      }
+
+      const user = req.user;
+      if (!user?.id) {
+        return res.redirect(
+          `${config.frontendUrl.replace(/\/$/, "")}/signin?error=missing_user`
+        );
+      }
+
+      const token = jwt.sign(
+        { userId: user.id, email: user.email },
+        config.jwt.secret,
+        { expiresIn: "12h" }
+      );
+
+      const redirectUrl = buildFrontendRedirect(token, nextOverride);
+      return res.redirect(302, redirectUrl);
+    } catch (err) {
+      logger.error("[OAuth] Callback error:", err);
+      return res.redirect(
+        `${config.frontendUrl.replace(/\/$/, "")}/signin?error=oauth_exception`
+      );
+    }
   },
 ];

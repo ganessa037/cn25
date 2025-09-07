@@ -1,53 +1,25 @@
-const { Sequelize } = require('sequelize');
-const config = require('./config');
-const logger = require('../utils/logger');
+import { Sequelize } from "sequelize";
+import config from "./config.js";
 
-// Create Sequelize instance
-const sequelize = new Sequelize(
-  config.database.name,
-  config.database.username,
-  config.database.password,
-  {
-    host: config.database.host,
-    port: config.database.port,
-    dialect: config.database.dialect,
-    logging: config.database.logging,
-    
-    // Connection pool settings
-    pool: {
-      max: 10,
-      min: 0,
-      acquire: 30000,
-      idle: 10000
-    },
-    
-    // Timezone configuration
-    timezone: '+08:00', // Malaysia timezone
-    
-    // Define global model options
-    define: {
-      timestamps: true,
-      underscored: true,
-      freezeTableName: true
-    }
-  }
-);
+// Prefer DATABASE_URL if provided; fall back to discrete fields.
+const url = process.env.DATABASE_URL;
 
-// Test database connection
-const connectDB = async () => {
-  try {
-    await sequelize.authenticate();
-    logger.info('PostgreSQL connection established successfully');
-    
-    // Sync models in development
-    if (config.nodeEnv === 'development') {
-      await sequelize.sync({ alter: true });
-      logger.info('Database models synchronized');
-    }
-  } catch (error) {
-    logger.error('Unable to connect to PostgreSQL:', error);
-    process.exit(1);
-  }
-};
+export const sequelize = url
+  ? new Sequelize(url, { logging: false, dialect: "postgres" })
+  : new Sequelize(
+      config.database.name,
+      config.database.username,
+      config.database.password,
+      {
+        host: config.database.host,
+        port: config.database.port,
+        dialect: config.database.dialect,
+        logging: config.database.logging,
+        pool: { max: 10, min: 0, acquire: 30000, idle: 10000 },
+        timezone: "+08:00",
+        define: { timestamps: true, underscored: true, freezeTableName: true },
+      }
+    );
 
-module.exports = { sequelize, connectDB };
+try { await sequelize.authenticate(); } catch {}
+
