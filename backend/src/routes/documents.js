@@ -1,116 +1,132 @@
 import express from "express";
 import fs from "fs/promises";
+import Tesseract from "tesseract.js";
+
 import { prisma } from "../db/prisma.js";
 import { requireUser } from "../middleware/requireUser.js";
-import { upload } from "../middleware/upload.js";
-import { extractTextFromBuffer } from "../services/mlService.js";
+import { upload } from "../middleware/upload.js"; // your existing multer (disk)
 
-const r = express.Router();
-r.use(requireUser);
+const router = express.Router();
+router.use(requireUser);
 
-/** GET /api/documents (current user only) */
-r.get("/", async (req, res) => {
-  const rows = await prisma.document.findMany({
-    where: { userId: req.user.id },
-    orderBy: { uploadedAt: "desc" },
-  });
-  res.json(rows);
-});
+/** ---- helpers ---- */
+function parseMaybeDate(input) {
+  if (!input) return null;
+  const iso = new Date(input);
+  if (!Number.isNaN(+iso)) return iso;
+  const m = String(input).match(/^(\d{2})\.(\d{2})\.(\d{4})$/);
+  if (m) {
+    const [, dd, mm, yyyy] = m;
+    const d = new Date(Number(yyyy), Number(mm) - 1, Number(dd));
+    if (!Number.isNaN(+d)) return d;
+  }
+  return null;
+}
 
 /**
- * POST /api/documents
- * multipart/form-data fields:
- *   - file (required)
- *   - type (optional enum)
- *   - name (required)
- *   - vehicleId (optional, must belong to user)
- *   - expiryDate (optional, ISO or YYYY-MM-DDTHH:mm:ss.SSS)
+ * Demo OCR/Text extraction (IMAGE-ONLY to avoid pdf-parse crash):
+ *  - Images → tesseract.js (first run may take a few seconds)
+ *  - PDFs → returns null (no text extraction for demo)
+ * Returns a trimmed string or null. Never throws.
  */
-r.post("/", upload.single("file"), async (req, res) => {
+async function extractTextFromUpload(file) {
   try {
-    const { type, name, vehicleId, expiryDate } = req.body;
-    if (!name || !req.file) {
-      return res.status(400).json({ error: "Missing required fields: name and file." });
+    let buffer = file?.buffer;
+    if (!buffer && file?.path) buffer = await fs.readFile(file.path);
+    if (!buffer) return null;
+
+    const mime = file.mimetype || "";
+
+    // Image OCR
+    if (mime.startsWith("image/")) {
+      const { data } = await Tesseract.recognize(buffer, "eng");
+      const text = (data?.text || "").trim();
+      return text || null;
     }
 
-    // Validate optional vehicle ownership
-    let vehicleIdSafe = null;
-    if (vehicleId) {
-      const owned = await prisma.vehicle.findFirst({
-        where: { id: String(vehicleId), userId: req.user.id },
-        select: { id: true },
-      });
-      if (owned) vehicleIdSafe = owned.id;
-    }
+    // PDFs and other types: skip OCR for demo (avoid pdf-parse)
+    return null;
+  } catch {
+    return null;
+  }
+}
 
-    // Read & encode file
-    const fileBuf = await fs.readFile(req.file.path);
-    const size = req.file.size ?? fileBuf.length;
-    const contentBase64 = `data:${req.file.mimetype};base64,${fileBuf.toString("base64")}`;
+/** ---- routes ---- */
 
-    // Create the row first (fast response path)
-    const created = await prisma.document.create({
-      data: {
-        userId: req.user.id,
-        vehicleId: vehicleIdSafe,
-        type: type || null,
-        name: name.trim(),
-        expiryDate: expiryDate ? new Date(expiryDate) : null,
-        uploadedAt: new Date(),
-        size,
-        contentBase64,
-        extractedText: null, // to be filled asynchronously
-      },
+// List user documents
+router.get("/", async (req, res, next) => {
+  try {
+    const docs = await prisma.document.findMany({
+      where: { userId: req.user.id },
+      orderBy: { uploadedAt: "desc" },
     });
-
-    // Fire-and-forget OCR so the client gets a quick 201
-    (async () => {
-      try {
-        const text = await extractTextFromBuffer(fileBuf, req.file.mimetype);
-        if (text && text.length > 0) {
-          await prisma.document.update({
-            where: { id: created.id },
-            data: { extractedText: text },
-          });
-        }
-      } catch (err) {
-        console.error("OCR failed:", err);
-      } finally {
-        // Clean up temp file
-        try {
-          await fs.unlink(req.file.path);
-        } catch {}
-      }
-    })();
-
-    return res.status(201).json(created);
+    res.json(docs);
   } catch (err) {
-    console.error("document upload error:", err);
-    return res.status(500).json({ error: "Upload failed" });
+    next(err);
   }
 });
 
-/** PUT /api/documents/:id (metadata only) */
-r.put("/:id", async (req, res) => {
-  const { id } = req.params;
-  const b = req.body || {};
-  const d = await prisma.document.update({
-    where: { id },
-    data: {
-      type: b.type ?? undefined,
-      name: b.name?.trim?.() ?? undefined,
-      vehicleId: b.vehicleId ?? undefined,
-      expiryDate: b.expiryDate ? new Date(b.expiryDate) : null,
-      extractedText: b.extractedText ?? undefined,
-    },
-  });
-  res.json(d);
+// Create + local OCR (image-only demo)
+router.post("/", upload.single("file"), async (req, res, next) => {
+  try {
+    const userId = req.user.id;
+    const { type, name, vehicleId, expiryDate } = req.body;
+    const f = req.file;
+    if (!f) return res.status(400).json({ error: "file is required" });
+
+    // best-effort OCR (image only)
+    const ocrText = await extractTextFromUpload(f);
+
+    const created = await prisma.document.create({
+      data: {
+        userId,
+        type,               // Prisma enum e.g. 'LICENSE' | 'INSURANCE' | ...
+        name,
+        vehicleId: vehicleId || null,
+        expiryDate: parseMaybeDate(expiryDate),
+        size: f.size,
+
+        // Uncomment if your schema has these:
+        // mimeType: f.mimetype,
+        // originalName: f.originalname,
+        // storagePath: f.path,
+
+        extractedText: ocrText,   // <-- ensure this matches your Prisma field
+      },
+    });
+
+    res.status(201).json(created);
+  } catch (err) {
+    next(err);
+  }
 });
 
-/** DELETE /api/documents/:id */
-r.delete("/:id", async (req, res) => {
-  await prisma.document.delete({ where: { id: req.params.id } });
-  res.json({ success: true });
+// Update metadata
+router.put("/:id", async (req, res, next) => {
+  try {
+    const data = { ...req.body };
+    if ("expiryDate" in data) data.expiryDate = parseMaybeDate(data.expiryDate);
+
+    const updated = await prisma.document.update({
+      where: { id: req.params.id, userId: req.user.id },
+      data,
+    });
+    res.json(updated);
+  } catch (err) {
+    next(err);
+  }
 });
 
-export default r;
+// Delete
+router.delete("/:id", async (req, res, next) => {
+  try {
+    await prisma.document.delete({
+      where: { id: req.params.id, userId: req.user.id },
+    });
+    res.json({ success: true });
+  } catch (err) {
+    next(err);
+  }
+});
+
+export default router;

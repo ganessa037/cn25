@@ -61,7 +61,7 @@ export default function Header() {
               </span>
             </span>
 
-            <span className="text-white font-semibold tracking-wide">KeretaKu</span>
+            <span className="text-white font-semibold tracking-wide">MyKereta</span>
           </Link>
 
           {/* Center content varies by page */}

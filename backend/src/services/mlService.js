@@ -3,7 +3,6 @@ import FormData from "form-data";
 
 const baseURL = process.env.ML_BASE_URL || "http://127.0.0.1:8001";
 const timeout = Number(process.env.ML_TIMEOUT_MS || 20000);
-
 const client = axios.create({ baseURL, timeout });
 
 export async function mlHealth() {
@@ -16,9 +15,10 @@ export async function mlPredict({ text }) {
   return data; // { label, score }
 }
 
-export async function mlExtractText(fileBuffer, filename, mimetype) {
+/** Upload a binary buffer to FastAPI /extract-text */
+export async function extractTextFromBuffer(buffer, filename, mimetype) {
   const form = new FormData();
-  form.append("file", fileBuffer, { filename, contentType: mimetype });
+  form.append("file", buffer, { filename, contentType: mimetype });
   const { data } = await client.post("/extract-text", form, {
     headers: form.getHeaders(),
     maxBodyLength: Infinity,
@@ -35,3 +35,5 @@ export async function mlJobStatus(jobId) {
   const { data } = await client.get(`/jobs/${encodeURIComponent(jobId)}`);
   return data; // { jobId, status }
 }
+
+export default { mlHealth, mlPredict, extractTextFromBuffer, mlTrain, mlJobStatus };

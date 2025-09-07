@@ -1,4 +1,3 @@
-# macOS
 .DS_Store
 
 # Node / Vite
@@ -10,12 +9,15 @@ npm-debug.log*
 pnpm-lock.yaml
 yarn.lock
 
-# Env & local
+# Local env (keep examples only)
 .env
 *.local
 backend/.env
 project/.env
 
-# Prisma
+# Prisma local files
 backend/prisma/dev.db
 backend/prisma/*.sqlite
+
+# Upload artifacts
+backend/uploads/
