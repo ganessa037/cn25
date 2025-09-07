@@ -1,4 +1,4 @@
-# KeretaKu — Smart Car Management
+# MyKereta — Smart Car Management
 
 A web app for managing vehicles, documents, expenses, and renewals, powered by AI.
 **Frontend**: React + TypeScript + Vite + Tailwind + Recharts
